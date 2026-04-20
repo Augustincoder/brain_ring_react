@@ -4,206 +4,229 @@ import { useEffect, useCallback, useRef } from 'react'
 import { getGameSocket, resetGameSocket, GameSocket } from '@/services/game-socket'
 import { useGameStore } from '@/store/game-store'
 import { useUserStore } from '@/store/user-store'
-import type { GameMode } from '@/types/game'
 import type {
-  RoomJoinedPayload,
-  QuestionStartPayload,
-  BuzzerResultPayload,
+  RoomCreatedPayload,
+  PlayerJoinedPayload,
+  PlayerLeftPayload,
+  GameStartingPayload,
+  QuestionReadyPayload,
+  PlayerAnsweringPayload,
   AnswerResultPayload,
-  AIRecheckResultPayload,
-  PeerVoteResultPayload,
-  GameEndPayload,
+  QuestionTimeoutPayload,
+  QuestionRevealPayload,
+  BuzzerOpenPayload,
+  MatchResultsPayload,
+  HostChangedPayload,
+  ErrorPayload
 } from '@/types/socket'
+import { useRouter } from 'next/navigation'
+import { useToast } from '@/hooks/use-toast'
 
-interface UseGameSocketReturn {
-  connect: () => Promise<void>
-  disconnect: () => void
-  joinRoom: (roomId: string, mode: GameMode) => Promise<void>
-  submitBuzzer: () => Promise<void>
-  submitAnswer: (answer: string) => Promise<void>
-  requestAIRecheck: (questionId: string, answer: string) => Promise<void>
-  startPeerVote: (questionId: string, answer: string) => void
-}
-
-export function useGameSocket(): UseGameSocketReturn {
+export function useGameSocket() {
   const socketRef = useRef<GameSocket | null>(null)
+  const router = useRouter()
+  const { toast } = useToast()
+  const hasAttemptedRejoin = useRef(false)
 
-  const userId = useUserStore((state) => state.id)
+  const {
+    setRoom, setPlayers, setPhase, setQuestion,
+    pressBuzzer, setAnswerResult, setQuestionReveal,
+    openBuzzer, setGameEnd, setHostId, setSyncing
+  } = useGameStore()
 
-  const setPlayers = useGameStore((state) => state.setPlayers)
-  const setPhase = useGameStore((state) => state.setPhase)
-  const setCurrentPhase = useGameStore((state) => state.setCurrentPhase)
-  const setQuestion = useGameStore((state) => state.setQuestion)
-  const pressBuzzer = useGameStore((state) => state.pressBuzzer)
-  const setAnswerResult = useGameStore((state) => state.setAnswerResult)
-  const updateScore = useGameStore((state) => state.updateScore)
-  const setAIRecheckResult = useGameStore((state) => state.setAIRecheckResult)
-  const endPeerVote = useGameStore((state) => state.endPeerVote)
-  const setGameEnd = useGameStore((state) => state.setGameEnd)
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // EFFECT 1: Attach all persistent socket event listeners.
+  // This runs once on mount and survives re-renders.
+  // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const socket = getGameSocket()
     socketRef.current = socket
 
-    const onRoomJoined = (payload: any) => {
-      const data = payload as RoomJoinedPayload
-      setPlayers(data.players)
+    const handleRoomCreated = (payload: any) => {
+      const hostId = payload.hostId || (payload.players?.[0]?.userId ?? 'unknown')
+      setRoom(payload.roomCode, payload.gameType, hostId as string)
+      setPlayers(payload.players)
     }
 
-    const onQuestionStart = (payload: any) => {
-      const data = payload as QuestionStartPayload
-      setQuestion(data.question, data.questionNumber, data.totalQuestions)
-      setPhase('question')
-      setCurrentPhase('action')
+    const handlePlayerJoined = (payload: PlayerJoinedPayload) => {
+      setPlayers(payload.players)
     }
 
-    const onBuzzerResult = (payload: any) => {
-      const data = payload as BuzzerResultPayload
-      pressBuzzer(data.winnerId, data.timestamp)
-      if (data.winnerId === userId) {
-        setPhase('answering')
+    const handlePlayerLeft = (payload: PlayerLeftPayload) => {
+      setPlayers(payload.players)
+    }
+
+    const handleHostChanged = (payload: HostChangedPayload) => {
+      setHostId(payload.newHostId)
+    }
+
+    const handleGameStarting = (payload: GameStartingPayload) => {
+      setPhase('waiting')
+      if (typeof window !== 'undefined' && window.location.pathname !== '/arena/brain-ring') {
+        router.push('/arena/brain-ring')
       }
     }
 
-    const onAnswerResult = (payload: any) => {
-      const data = payload as AnswerResultPayload
-      setAnswerResult(data.playerId, data.isCorrect, data.correctAnswer, data.pointsEarned)
-      if (data.playerId && data.pointsEarned !== 0) {
-        updateScore(data.playerId, data.pointsEarned)
-      }
-    }
-
-    const onAiRecheckResult = (payload: any) => {
-      const data = payload as AIRecheckResultPayload
-      setAIRecheckResult({
-        isValid: data.isValid,
-        explanation: data.explanation,
-        confidence: data.confidence,
-      })
-
-      import('sonner').then(({ toast }) => {
-        if (data.isValid) {
-          toast.success(`Tabriklaymiz! Apellyatsiya qabul qilindi: ${data.explanation}`)
-        } else {
-          toast.error(`Apellyatsiya rad etildi: ${data.explanation}`)
-        }
-      })
-    }
-
-    const onPeerVoteResult = (payload: any) => {
-      const data = payload as PeerVoteResultPayload
-      endPeerVote(data.accepted)
-    }
-
-    const onGameEnd = (payload: any) => {
-      const data = payload as GameEndPayload
-      setGameEnd(data.finalScores, data.mmrChanges, data.winner)
-    }
-
-    const onGameQuestion = (payload: any) => {
-      console.log('🔥 [game:question] RAW PAYLOAD =>', payload)
-
-      let safeQuestion = payload.question
-
-      if (typeof safeQuestion === 'string') {
-        safeQuestion = {
-          id: `q_${payload.index}`,
-          text: safeQuestion,
-          category: 'General',
-          difficulty: 'medium',
-          timeLimit: 15,
-          points: payload.pointValue || 1,
-        }
-      }
-
-      useGameStore.getState().setQuestion(
-        safeQuestion,
-        payload.index + 1,
-        payload.total,
-        payload.readTimerMs
+    // ── PILLAR 1: question_ready now carries endTime ──────────────────────────
+    // setQuestion() clears isSyncing — this is the "sync complete" signal.
+    const handleQuestionReady = (payload: QuestionReadyPayload) => {
+      setQuestion(
+        { questionText: payload.questionText },
+        payload.questionIndex,
+        payload.totalQuestions,
+        payload.endTime,          // absolute epoch ms — replaces readingTimeMs duration
+        payload.chancesLeft || 3
       )
+      if (payload.players) setPlayers(payload.players)
     }
 
-    const onGamePhaseAction = () => {
-      useGameStore.getState().setCurrentPhase('action')
+    const handlePlayerAnswering = (payload: PlayerAnsweringPayload) => {
+      pressBuzzer(payload.buzzerId, payload.buzzerUsername, payload.endTime)
     }
 
-    const onBuzzerLocked = (payload: any) => {
-      const state = useGameStore.getState()
-      state.setBuzzerLockedBy(payload.userId)
-      state.setCurrentPhase('input')
-      state.pressBuzzer(payload.userId, Date.now())
+    const handleAnswerResult = (payload: AnswerResultPayload) => {
+      setAnswerResult(payload.userId, payload.isCorrect, payload.correctAnswer, payload.chancesLeft, payload.givenAnswer)
+      if (payload.players) setPlayers(payload.players)
     }
 
-    const onBuzzerReactivate = () => {
-      useGameStore.getState().setCurrentPhase('action')
-      useGameStore.getState().setBuzzerLockedBy(null)
+    const handleQuestionTimeout = (payload: QuestionTimeoutPayload) => {
+      setQuestionReveal(payload.correctAnswer, payload.explanation)
     }
 
-    const onGameRoundResult = (payload: any) => {
-      useGameStore.getState().setRoundResults(payload)
-      useGameStore.getState().setCurrentPhase('leaderboard')
+    const handleQuestionReveal = (payload: QuestionRevealPayload) => {
+      setQuestionReveal(payload.correctAnswer, payload.explanation)
+    }
 
-      const scoresMap: Record<string, number> = {}
-      if (payload.scores) {
-        payload.scores.forEach((s: any) => { scoresMap[s.userId] = s.score })
-        useGameStore.getState().setScores(scoresMap)
+    const handleBuzzerOpen = (payload: BuzzerOpenPayload) => {
+      openBuzzer(payload.chancesLeft, payload.endTime)
+    }
+
+    const handleMatchResults = (payload: MatchResultsPayload) => {
+      setGameEnd(payload)
+      router.push('/results')
+    }
+
+    const handleError = (payload: ErrorPayload) => {
+      console.error('[Socket Error]', payload.message)
+      // If syncing and we get an error, clear the syncing state so the UI unblocks
+      if (useGameStore.getState().isSyncing) {
+        setSyncing(false)
       }
+      toast({
+        title: 'Xatolik',
+        description: payload.message,
+        variant: 'destructive',
+      })
     }
 
-    const onBuzzerResultPhase3 = (payload: any) => {
-      if (!payload.correct) {
-        const currentLocked = useGameStore.getState().lockedPlayers
-        if (!currentLocked.includes(payload.userId)) {
-          useGameStore.getState().setLockedPlayers([...currentLocked, payload.userId])
-        }
-      }
-    }
-
-    socket.on('room_joined', onRoomJoined)
-    socket.on('question_start', onQuestionStart)
-    socket.on('buzzer_result', onBuzzerResult)
-    socket.on('answer_result', onAnswerResult)
-    socket.on('ai_recheck_result', onAiRecheckResult)
-    socket.on('peer_vote_result', onPeerVoteResult)
-    socket.on('game_end', onGameEnd)
-
-    socket.on('game:question', onGameQuestion)
-    socket.on('game:phase_action', onGamePhaseAction)
-    socket.on('buzzer:locked', onBuzzerLocked)
-    socket.on('buzzer:reactivate', onBuzzerReactivate)
-    socket.on('game:round_result', onGameRoundResult)
-    socket.on('buzzer:result', onBuzzerResultPhase3)
+    socket.on('room_created', handleRoomCreated)
+    socket.on('player_joined', handlePlayerJoined)
+    socket.on('player_left', handlePlayerLeft)
+    socket.on('host_changed', handleHostChanged)
+    socket.on('game_starting', handleGameStarting)
+    socket.on('question_ready', handleQuestionReady)
+    socket.on('player_answering', handlePlayerAnswering)
+    socket.on('answer_result', handleAnswerResult)
+    socket.on('question_timeout', handleQuestionTimeout)
+    socket.on('question_reveal', handleQuestionReveal)
+    socket.on('buzzer_open', handleBuzzerOpen)
+    socket.on('match_results', handleMatchResults)
+    socket.on('error', handleError)
 
     return () => {
-      socket.off('room_joined', onRoomJoined)
-      socket.off('question_start', onQuestionStart)
-      socket.off('buzzer_result', onBuzzerResult)
-      socket.off('answer_result', onAnswerResult)
-      socket.off('ai_recheck_result', onAiRecheckResult)
-      socket.off('peer_vote_result', onPeerVoteResult)
-      socket.off('game_end', onGameEnd)
-
-      socket.off('game:question', onGameQuestion)
-      socket.off('game:phase_action', onGamePhaseAction)
-      socket.off('buzzer:locked', onBuzzerLocked)
-      socket.off('buzzer:reactivate', onBuzzerReactivate)
-      socket.off('game:round_result', onGameRoundResult)
-      socket.off('buzzer:result', onBuzzerResultPhase3)
+      socket.off('room_created', handleRoomCreated)
+      socket.off('player_joined', handlePlayerJoined)
+      socket.off('player_left', handlePlayerLeft)
+      socket.off('host_changed', handleHostChanged)
+      socket.off('game_starting', handleGameStarting)
+      socket.off('question_ready', handleQuestionReady)
+      socket.off('player_answering', handlePlayerAnswering)
+      socket.off('answer_result', handleAnswerResult)
+      socket.off('question_timeout', handleQuestionTimeout)
+      socket.off('question_reveal', handleQuestionReveal)
+      socket.off('buzzer_open', handleBuzzerOpen)
+      socket.off('match_results', handleMatchResults)
+      socket.off('error', handleError)
     }
   }, [
-    userId,
-    setPlayers,
-    setPhase,
-    setCurrentPhase,
-    setQuestion,
-    pressBuzzer,
-    setAnswerResult,
-    updateScore,
-    setAIRecheckResult,
-    endPeerVote,
-    setGameEnd,
+    setRoom, setPlayers, setPhase, setQuestion, pressBuzzer,
+    setAnswerResult, setQuestionReveal, openBuzzer, setGameEnd,
+    setHostId, setSyncing, router, toast,
   ])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EFFECT 2: PILLAR 1 — Reconnection Rehydration on Mount.
+  //
+  // Reads the persisted 'game-session' from localStorage (written by Zustand
+  // persist middleware on game-store). If a roomCode exists AND the socket is
+  // not already connected, we connect and emit rejoin_room.
+  //
+  // setSyncing(true) shows the loading guard immediately. The guard clears
+  // itself inside setQuestion() when the server delivers question_ready.
+  //
+  // Guard: hasAttemptedRejoin prevents firing twice in React StrictMode.
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (hasAttemptedRejoin.current) return
+    hasAttemptedRejoin.current = true
+
+    const token = useUserStore.getState().token
+    if (!token) return // not authenticated — nothing to rejoin
+
+    const socket = getGameSocket()
+
+    // The socket is already connected (e.g. normal navigation) — nothing to do.
+    if (socket.isConnected()) return
+
+    // Read persisted session from localStorage via Zustand persist storage key.
+    let persisted: { roomCode?: string; phase?: string } | null = null
+    try {
+      const raw = localStorage.getItem('game-session')
+      if (raw) persisted = JSON.parse(raw)?.state ?? null
+    } catch {
+      // localStorage unavailable (SSR guard) — no-op
+    }
+
+    const roomCode = persisted?.roomCode
+    const phase = persisted?.phase
+
+    // Only attempt rejoin for active game phases — not matchmaking/waiting/finished.
+    const activePhases = ['reading', 'buzzing', 'answering', 'results', 'reveal']
+    if (!roomCode || !phase || !activePhases.includes(phase)) return
+
+    // ── Fire the reconnect sequence ───────────────────────────────────────
+    setSyncing(true)
+
+    socket.connect()
+      .then(() => {
+        socket.rejoinRoom(roomCode)
+        // Safety timeout: if the server doesn't respond within 6 seconds
+        // (e.g. room expired), clear the syncing guard so the UI unblocks.
+        setTimeout(() => {
+          if (useGameStore.getState().isSyncing) {
+            setSyncing(false)
+            toast({
+              title: 'Xona topilmadi',
+              description: 'O\'yin sessiyasi tugagan yoki muddati o\'tgan.',
+              variant: 'destructive',
+            })
+          }
+        }, 6_000)
+      })
+      .catch((err) => {
+        console.error('[Rejoin] Socket connect failed:', err)
+        setSyncing(false)
+        toast({
+          title: 'Ulanib bo\'lmadi',
+          description: 'Server bilan aloqa o\'rnatilmadi. Qayta urinib ko\'ring.',
+          variant: 'destructive',
+        })
+      })
+  }, [setSyncing, toast])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Outbound action API
+  // ─────────────────────────────────────────────────────────────────────────
 
   const connect = useCallback(async () => {
     const socket = getGameSocket()
@@ -214,38 +237,33 @@ export function useGameSocket(): UseGameSocketReturn {
     resetGameSocket()
   }, [])
 
-  const joinRoom = useCallback(async (roomId: string, mode: GameMode) => {
-    const socket = getGameSocket()
-    await socket.joinRoom(roomId, mode)
+  const createRoom = useCallback((gameType: 'solo' | '1v1' | 'group') => {
+    getGameSocket().createRoom(gameType)
   }, [])
 
-  const submitBuzzer = useCallback(async () => {
-    const socket = getGameSocket()
-    await socket.submitBuzzer(userId || 'user', Date.now())
-  }, [userId])
+  const joinRoom = useCallback((roomCode: string) => {
+    getGameSocket().joinRoom(roomCode)
+  }, [])
 
-  const submitAnswer = useCallback(async (answer: string) => {
-    const socket = getGameSocket()
-    await socket.submitAnswer(userId || 'user', answer)
-  }, [userId])
+  const startGame = useCallback(() => {
+    getGameSocket().startGame()
+  }, [])
 
-  const requestAIRecheck = useCallback(async (questionId: string, answer: string) => {
-    const socket = getGameSocket()
-    await socket.requestAIRecheck(questionId, userId || 'user', answer)
-  }, [userId])
+  const buzzIn = useCallback(() => {
+    getGameSocket().buzzIn()
+  }, [])
 
-  const startPeerVote = useCallback((questionId: string, answer: string) => {
-    const socket = getGameSocket()
-    socket.startPeerVote(questionId, userId || 'user', answer)
-  }, [userId])
+  const submitAnswer = useCallback((answer: string) => {
+    getGameSocket().submitAnswer(answer)
+  }, [])
 
   return {
     connect,
     disconnect,
+    createRoom,
     joinRoom,
-    submitBuzzer,
+    startGame,
+    buzzIn,
     submitAnswer,
-    requestAIRecheck,
-    startPeerVote,
   }
 }

@@ -1,23 +1,16 @@
 import type { Metadata } from 'next'
-// import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 
 // Providers and UI components
-import { SocketProvider } from '@/components/providers/socket-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { AppShell } from '@/components/layout/app-shell'
 
 import './globals.css'
 
-// Fontlarni Tailwind tushunadigan o'zgaruvchilar bilan sozlash
-// const geistMono = GeistMono({
-//   variable: "--font-mono"
-// });
-
 export const metadata: Metadata = {
   title: "Aqliy O'yinlar - Brain Ring",
-  description: "Brain Ring — yakka mashq, 1v1 va do'stlar bilan premium bilim bellashuvi",
+  description: "Brain Ring",
   generator: 'v0.app',
   icons: {
     icon: [
@@ -45,19 +38,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="uz" suppressHydrationWarning>
-      <body className={`${geistMono.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
           disableTransitionOnChange
         >
-          <SocketProvider>
-            <AppShell>
-              {children}
-            </AppShell>
-            {process.env.NODE_ENV === 'production' && <Analytics />}
-          </SocketProvider>
+          <AppShell>
+            {children}
+          </AppShell>
+          {process.env.NODE_ENV === 'production' && <Analytics />}
           <Toaster />
         </ThemeProvider>
       </body>

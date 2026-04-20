@@ -6,7 +6,6 @@ import { Copy, Check, Link2, UserPlus, Hash } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { triggerHaptic } from '@/lib/telegram'
 
 interface RoomInviteProps {
   roomCode: string
@@ -30,32 +29,22 @@ export function RoomInvite({
     try {
       await navigator.clipboard.writeText(deepLink)
       setCopied(true)
-      triggerHaptic('success')
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // Fallback: copy room code
       try {
         await navigator.clipboard.writeText(roomCode)
         setCopied(true)
-        triggerHaptic('success')
         setTimeout(() => setCopied(false), 2000)
       } catch {
-        triggerHaptic('error')
+        // failed silently
       }
     }
-  }
-
-  const handleShareTelegram = () => {
-    triggerHaptic('medium')
-    const text = `🧠 Aqliy O'yinlar — Menga qo'shiling!\n\nXona kodi: ${roomCode}`
-    const url = `https://t.me/share/url?url=${encodeURIComponent(deepLink)}&text=${encodeURIComponent(text)}`
-    window.open(url, '_blank')
   }
 
   const handleJoinByCode = (e: React.FormEvent) => {
     e.preventDefault()
     if (!manualCode.trim() || manualCode.length < 6) return
-    triggerHaptic('medium')
     onJoinByCode?.(manualCode.trim().toUpperCase())
     setManualCode('')
   }
@@ -96,26 +85,19 @@ export function RoomInvite({
         <Button
           variant="outline"
           onClick={handleCopyLink}
-          className="flex-1 h-11 rounded-xl gap-2"
+          className="flex-1 h-11 rounded-xl gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary font-bold shadow-sm"
         >
           {copied ? (
             <>
-              <Check className="h-4 w-4 text-emerald-500" />
+              <Check className="h-5 w-5 text-emerald-500" />
               <span className="text-emerald-600">Nusxalandi!</span>
             </>
           ) : (
             <>
-              <Copy className="h-4 w-4" />
+              <Copy className="h-5 w-5" />
               Havolani nusxalash
             </>
           )}
-        </Button>
-        <Button
-          onClick={handleShareTelegram}
-          className="flex-1 h-11 rounded-xl gap-2"
-        >
-          <Link2 className="h-4 w-4" />
-          Telegram orqali
         </Button>
       </div>
 

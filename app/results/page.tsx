@@ -2,313 +2,195 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { AppShell } from '@/components/layout/app-shell'
 import { TgSafeArea } from '@/components/layout/tg-safe-area'
 import { ScoreSummary } from '@/components/results/score-summary'
-import { AIRecheckButton } from '@/components/results/ai-recheck-button'
-import { PeerVoteCard } from '@/components/results/peer-vote-card'
 import { Button } from '@/components/ui/button'
-import { useGameStore } from '@/store/game-store'
 import { formatBrainRingSessionLabel } from '@/types/game'
+import { Crown, AlertCircle, CheckCircle } from 'lucide-react'
+import { useGameStore } from '@/store/game-store'
 import { useUserStore } from '@/store/user-store'
+import { api } from '@/lib/api'
+import { toast } from 'sonner'
 import { useTelegram } from '@/hooks/use-telegram'
-import { Crown, ArrowRight, Bot, AlertTriangle, ChevronRight } from 'lucide-react'
-import confetti from 'canvas-confetti'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
+import { resetGameSocket } from '@/services/game-socket'
+
+const loadConfetti = () => import('canvas-confetti')
 
 export default function ResultsPage() {
   const router = useRouter()
   const { haptic } = useTelegram()
-  
-  const userId = useUserStore((state) => state.id)
+  const userId = useUserStore((state) => state._id)
   const username = useUserStore((state) => state.username)
-  const scores = useGameStore((state) => state.scores)
-  const winner = useGameStore((state) => state.winner)
-  const mode = useGameStore((state) => state.mode)
-  const reset = useGameStore((state) => state.reset)
-
-  const [showConfetti, setShowConfetti] = useState(false)
-  const [aiRecheckResult, setAIRecheckResult] = useState<{ isValid: boolean; explanation: string } | null>(null)
+  const isAdmin = useUserStore((state) => state.role === 'admin')
   
-  // AI Recheck Modal State
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
+  const matchResult = useGameStore((state) => state.matchResult)
+  const hostId = useGameStore((state) => state.hostId)
+  const mode = useGameStore((state) => state.mode)
+  const resetGame = useGameStore((state) => state.reset)
 
-  // Mock answered questions
-  const mockAnsweredQuestions = [
-    { id: 'q1', text: "Qaysi sayyora Quyosh tizimida eng katta?", userAnswer: "Jupiter", isCorrect: false, correctRate: 85 },
-    { id: 'q2', text: "O'zbekistonning poytaxti qaysi shahar?", userAnswer: "Toshkent shahri", isCorrect: false, correctRate: 32 },
-    { id: 'q3', text: "Kimyoviy element 'Au' ning nomi nima?", userAnswer: "Oltinn", isCorrect: false, correctRate: 90 },
-  ].sort((a, b) => a.correctRate - b.correctRate) // Sort by lowest correct rate (most controversial first)
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({})
+  const [showConfetti, setShowConfetti] = useState(false)
 
   useEffect(() => {
-    if (isAIModalOpen && !selectedQuestionId) {
-      // Auto-select most controversial
-      setSelectedQuestionId(mockAnsweredQuestions[0].id)
+    resetGameSocket()
+  }, [])
+
+  if (!matchResult) {
+    return (
+      <AppShell className="items-center justify-center">
+        <p className="text-muted-foreground font-medium animate-pulse">Natijalar olinmoqda...</p>
+      </AppShell>
+    )
+  }
+
+  let myScore = 0
+  let topScore = -1
+  let winnerId = ''
+
+  matchResult.participants.forEach(p => {
+    if (p.userId === userId) myScore = p.score
+    if (p.score > topScore) {
+      topScore = p.score
+      winnerId = p.userId
     }
-  }, [isAIModalOpen, selectedQuestionId, mockAnsweredQuestions])
+  })
 
-  const userScore = scores[userId || 'user'] || 0
-  const isWinner = winner === userId || winner === 'user'
+  // Group requires you actually win, Solo requires you do decently well (score > 0)
+  const isWinner = mode === 'solo' ? myScore > 0 : winnerId === userId
 
-  // Show confetti for winner
   useEffect(() => {
     if (isWinner && !showConfetti) {
       setShowConfetti(true)
       haptic('success')
-      
-      const duration = 3 * 1000
-      const animationEnd = Date.now() + duration
-
-      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min
-
-      const interval = setInterval(() => {
-        const timeLeft = animationEnd - Date.now()
-
-        if (timeLeft <= 0) {
-          clearInterval(interval)
-          return
-        }
-
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ['#22c55e', '#3b82f6', '#f59e0b'],
-        })
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ['#22c55e', '#3b82f6', '#f59e0b'],
-        })
-      }, 100)
-
-      return () => clearInterval(interval)
+      loadConfetti().then((confetti) => {
+        const end = Date.now() + 3000
+        const interval = setInterval(() => {
+          if (Date.now() > end) return clearInterval(interval)
+          confetti.default({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#22c55e', '#3b82f6', '#f59e0b'] })
+          confetti.default({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#22c55e', '#3b82f6', '#f59e0b'] })
+        }, 150)
+      })
     }
   }, [isWinner, showConfetti, haptic])
 
-  const handleAIRecheckResult = (isValid: boolean, explanation: string) => {
-    setAIRecheckResult({ isValid, explanation })
-  }
-
-  const handlePeerVote = (accepted: boolean) => {
-    haptic('light')
-  }
-
-  const handleContinue = () => {
-    router.push('/leaderboard')
-  }
-
   const handlePlayAgain = () => {
-    reset()
+    resetGame()
     router.push('/lobby')
   }
+
+  const handleOverride = async (questionId: string, participantUserId: string) => {
+    try {
+      const res = await api.post('/api/game/override', {
+        gameHistoryId: matchResult.gameHistoryId,
+        questionId,
+        userId: participantUserId
+      })
+
+      if (res.data.success) {
+        toast.success("Javob to'g'ri deb qabul qilindi!")
+        setOverrides(prev => ({ ...prev, [`${questionId}_${participantUserId}`]: true }))
+        haptic('success')
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Xatolik yuz berdi.')
+      haptic('error')
+    }
+  }
+
+  const canOverride = isAdmin || (hostId === userId)
 
   return (
     <AppShell>
       <TgSafeArea>
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="p-4 border-b border-border/30 text-center">
-            <h1 className="text-xl font-bold text-foreground">O&apos;yin yakunlandi</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {formatBrainRingSessionLabel(mode)}
-            </p>
+        <div className="flex flex-col h-full bg-background overflow-hidden relative">
+          <div className="relative z-10 p-6 border-b border-border/30 text-center bg-card/80 backdrop-blur shadow-sm">
+            <h1 className="text-3xl font-black text-foreground drop-shadow-sm">O'yin yakunlandi</h1>
+            <p className="text-sm font-medium text-muted-foreground mt-2 uppercase tracking-widest">{formatBrainRingSessionLabel(mode)}</p>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-auto p-4">
-            {/* Winner badge */}
-            {isWinner && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'spring', duration: 0.5 }}
-                className="flex flex-col items-center mb-6"
-              >
-                <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mb-3">
-                  <Crown className="h-10 w-10 text-amber-500" />
+          <div className="relative z-10 flex-1 overflow-auto p-6 space-y-8 bg-gradient-to-b from-card/30 to-background">
+            {isWinner ? (
+              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
+                <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-amber-400/20 to-amber-600/20 flex items-center justify-center mb-6 border border-amber-500/30 shadow-2xl shadow-amber-500/10 transform rotate-3 hover:rotate-0 transition-transform">
+                  <Crown className="h-14 w-14 text-amber-500 fall-animation" />
                 </div>
-                <h2 className="text-2xl font-bold text-foreground">Tabriklaymiz!</h2>
-                <p className="text-muted-foreground">Siz g&apos;olib bo&apos;ldingiz, {username}!</p>
+                <h2 className="text-4xl font-black text-foreground mb-2 tracking-tight">Tabriklaymiz!</h2>
+                <p className="text-lg text-muted-foreground font-medium bg-muted px-4 py-1.5 rounded-full">Ajoyib natija, <span className="text-primary font-bold">{username}</span>!</p>
               </motion.div>
+            ) : (
+               <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center mt-4">
+                 <h2 className="text-3xl font-black text-foreground mb-3">Yaxshi o'yin!</h2>
+                 <p className="text-muted-foreground font-medium text-lg">Keyingi safar omad, {username}!</p>
+               </motion.div>
             )}
 
-            {!isWinner && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center mb-6"
-              >
-                <h2 className="text-xl font-semibold text-foreground">Yaxshi o&apos;yin!</h2>
-                <p className="text-muted-foreground">Keyingi safar omad, {username}!</p>
-              </motion.div>
+            <div className="grid gap-4 mt-8">
+               {matchResult.participants.map(p => (
+                 <div key={p.userId} className="p-5 rounded-2xl bg-card border-border/50 shadow-md flex justify-between items-center transform transition-all hover:-translate-y-1 hover:shadow-lg">
+                   <div>
+                     <p className="font-bold text-xl">{p.username}</p>
+                     <div className="flex gap-3 mt-2 text-xs font-semibold">
+                       <span className="text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md">Yaxshi: {p.correctAnswers}</span>
+                       <span className="text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-md">Xato: {p.wrongAnswers}</span>
+                     </div>
+                   </div>
+                   <div className="text-3xl font-black text-primary bg-primary/5 p-3 rounded-xl min-w-16 text-center">{p.score}</div>
+                 </div>
+               ))}
+            </div>
+
+            {canOverride && matchResult.questions.length > 0 && (
+              <div className="mt-10 pt-10 border-t border-border/50">
+                <div className="flex items-center justify-center gap-3 mb-6 bg-card p-4 rounded-2xl border shadow-sm">
+                  <AlertCircle className="w-6 h-6 text-indigo-500" />
+                  <h3 className="text-xl font-bold text-foreground">Xost Boshqaruvi</h3>
+                </div>
+                <p className="text-sm text-center text-muted-foreground mb-8 max-w-sm mx-auto font-medium">Noto'g'ri baholangan lexik xatolarini "To'g'ri" ga aylantirish uchun o'z vaqtida chora ko'ring.</p>
+                <div className="space-y-6">
+                  {matchResult.questions.map((q: any, i) => (
+                    <div key={q._id || i} className="p-5 bg-card/60 backdrop-blur rounded-2xl border shadow-sm transition-all hover:border-primary/30">
+                      <div className="flex gap-4">
+                         <div className="text-2xl font-black text-muted-foreground/30">{i+1}</div>
+                         <div className="flex-1">
+                            <p className="text-base font-bold text-foreground/90 mb-3">{q.questionText}</p>
+                            <p className="text-sm text-emerald-500 font-bold bg-emerald-500/10 inline-flex px-3 py-1 rounded-full mb-4">Javob: {q.correctAnswer}</p>
+                            <div className="space-y-3 mt-2">
+                               {matchResult.participants.map(p => {
+                                 const key = `${q._id}_${p.userId}`
+                                 const isOverridden = overrides[key]
+                                 return (
+                                   <div key={key} className="flex items-center justify-between p-3 bg-background rounded-xl border border-border/50 shadow-sm">
+                                     <span className="text-sm font-bold opacity-80">{p.username}</span>
+                                     <Button
+                                       variant={isOverridden ? "secondary" : "outline"}
+                                       size="sm"
+                                       className={isOverridden ? "text-emerald-600 bg-emerald-500/20 hover:bg-emerald-500/20 font-bold border-0 shadow-inner" : "font-semibold bg-background hover:bg-muted"}
+                                       onClick={() => handleOverride(q._id, p.userId)}
+                                       disabled={isOverridden}
+                                     >
+                                       {isOverridden ? <><CheckCircle className="w-4 h-4 mr-1.5"/> Tasdiqlandi</> : "To'g'ri deyish"}
+                                     </Button>
+                                   </div>
+                                 )
+                               })}
+                            </div>
+                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-
-            {/* Score summary */}
-            <ScoreSummary
-              totalScore={userScore}
-              correctAnswers={Math.max(0, Math.floor(userScore / 10))}
-              totalQuestions={3}
-              averageTime={5.2}
-              className="mb-6"
-            />
-
-            {/* AI Recheck section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="mb-4 flex flex-col gap-2"
-            >
-              <h3 className="text-sm font-medium text-foreground">Javobni qayta tekshirish</h3>
-              <Button
-                variant="outline"
-                onClick={() => setIsAIModalOpen(true)}
-                className="w-full h-12 rounded-xl gap-2 bg-card border-primary/30 text-primary hover:bg-primary/5"
-              >
-                <Bot className="h-5 w-5" />
-                AI orqali tekshirish
-              </Button>
-            </motion.div>
-
-            {/* Peer vote section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <h3 className="text-sm font-medium text-foreground mb-2">Munozarali javob</h3>
-              <PeerVoteCard
-                questionText="O'zbekistonning poytaxti qaysi shahar?"
-                userAnswer="Toshkent shahri"
-                onVote={handlePeerVote}
-                votesYes={3}
-                votesNo={1}
-              />
-            </motion.div>
           </div>
 
-          {/* Action buttons */}
-          <div className="p-4 border-t border-border/30 flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handlePlayAgain}
-              className="flex-1 h-12"
-            >
-              Qayta o&apos;ynash
-            </Button>
-            <Button
-              onClick={handleContinue}
-              className="flex-1 h-12"
-            >
-              Davom etish
-              <ArrowRight className="h-4 w-4 ml-2" />
+          <div className="relative z-20 p-6 bg-card/90 backdrop-blur-md border-t border-border shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)]">
+            <Button onClick={handlePlayAgain} className="w-full h-16 text-xl font-bold rounded-2xl shadow-xl transition-all hover:scale-[1.02] hover:shadow-primary/25" size="lg">
+              Yangi o'yin boshlash
             </Button>
           </div>
         </div>
-
-        {/* AI Recheck Modal */}
-        <Dialog open={isAIModalOpen} onOpenChange={setIsAIModalOpen}>
-          <DialogContent className="rounded-3xl border-border/30 bg-background/98 backdrop-blur-xl sm:max-w-md p-0 flex flex-col max-h-[85vh]">
-            <DialogHeader className="p-6 pb-2 text-center border-b border-border/30 shrink-0">
-              <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <Bot className="h-6 w-6 text-primary" />
-              </div>
-              <DialogTitle className="text-xl">AI Tekshiruvi</DialogTitle>
-              <DialogDescription className="text-sm mt-1">
-                Noto&apos;g&apos;ri deb topilgan javobingizni AI qayta tekshirib berishi mumkin.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-2 mb-1 px-1">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Munozarali javoblar
-                </span>
-              </div>
-              
-              {mockAnsweredQuestions.map((q, index) => {
-                const isSelected = selectedQuestionId === q.id
-                return (
-                  <button
-                    key={q.id}
-                    onClick={() => {
-                      setSelectedQuestionId(q.id)
-                      setAIRecheckResult(null) // reset result when changing selection
-                    }}
-                    className={cn(
-                      "flex flex-col text-left p-4 rounded-xl border transition-all duration-200",
-                      isSelected 
-                        ? "bg-primary/5 border-primary shadow-sm" 
-                        : "bg-card/50 border-border/30 hover:border-primary/50"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2 w-full">
-                      <span className="text-sm font-medium leading-snug line-clamp-2">
-                        {q.text}
-                      </span>
-                      {index === 0 && (
-                        <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500">
-                          {q.correctRate}% to&apos;g&apos;ri
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-3 flex items-center gap-2 w-full">
-                      <span className="text-xs text-muted-foreground">Sizning javobingiz:</span>
-                      <span className={cn(
-                        "text-sm font-semibold truncate",
-                        isSelected ? "text-primary" : "text-foreground"
-                      )}>
-                        &quot;{q.userAnswer}&quot;
-                      </span>
-                    </div>
-                  </button>
-                )
-              })}
-
-              {/* Show result if checked */}
-              <AnimatePresence>
-                {aiRecheckResult && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, y: -10, height: 0 }}
-                    className={cn(
-                      "mt-2 p-4 rounded-xl text-sm leading-relaxed border",
-                      aiRecheckResult.isValid
-                        ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30"
-                        : "bg-rose-500/10 text-rose-700 border-rose-500/30"
-                    )}
-                  >
-                    {aiRecheckResult.explanation}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <div className="p-4 border-t border-border/30 bg-background/50 shrink-0">
-              <AIRecheckButton
-                questionText={mockAnsweredQuestions.find(q => q.id === selectedQuestionId)?.text || ''}
-                userAnswer={mockAnsweredQuestions.find(q => q.id === selectedQuestionId)?.userAnswer || ''}
-                onResult={handleAIRecheckResult}
-                className="w-full h-12 rounded-xl"
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
       </TgSafeArea>
     </AppShell>
   )

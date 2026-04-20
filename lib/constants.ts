@@ -5,7 +5,7 @@ export const BUZZER_WINDOW = 100 // 100ms window for simultaneous buzzes
 
 // Default game settings
 export const DEFAULT_QUESTION_TIME = 15 // seconds
-export const DEFAULT_ANSWER_TIME = 10 // seconds
+export const DEFAULT_ANSWER_TIME = 7 // seconds
 export const QUESTIONS_PER_GAME = 10
 
 // Scoring
@@ -13,9 +13,6 @@ export const BASE_POINTS = 10
 export const TIME_BONUS_MULTIPLIER = 0.5
 export const WRONG_ANSWER_PENALTY = -10 // Optional server-side penalty for incorrect answers
 
-// MMR
-export const BASE_MMR = 1000
-export const MMR_K_FACTOR = 32
 
 // Animation durations (in ms)
 export const ANIMATION_DURATION = {

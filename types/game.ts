@@ -1,10 +1,6 @@
-/** Brain Ring sub-mode: how the session is played (solo / duel / friends room). */
 export type GameMode = 'solo' | '1v1' | 'group'
 
-export type GamePhase = 'waiting' | 'question' | 'buzzer' | 'answering' | 'results' | 'finished'
-
-/** Server-side game identifier emitted on `room:create` / joins — always Brain Ring now. */
-export type ServerGameKind = 'brain-ring'
+export type GamePhase = 'matchmaking' | 'waiting' | 'reading' | 'buzzing' | 'answering' | 'reveal' | 'results' | 'finished'
 
 export interface Question {
   id: string
@@ -15,35 +11,28 @@ export interface Question {
   options?: string[]
   timeLimit: number // in seconds
   points: number
+  explanation?: string
 }
 
-export interface Answer {
-  playerId: string
-  questionId: string
-  answer: string
-  timestamp: number
-  isCorrect?: boolean
+export interface ParticipantScore {
+  userId: string
+  username: string
+  score: number
+  correctAnswers: number
+  wrongAnswers: number
+  averageTime: number
 }
 
-export interface AIRecheckResult {
-  isValid: boolean
-  explanation: string
-  confidence: number
-}
-
-export interface PeerVote {
-  voterId: string
-  targetPlayerId: string
-  questionId: string
-  accepted: boolean
-}
-
-export interface GameResult {
-  finalScores: Record<string, number>
-  mmrChanges: Record<string, number>
-  winner: string | null
-  questions: Question[]
-  answers: Answer[]
+export interface MatchResult {
+  gameHistoryId: string
+  matchId: string
+  gameType: GameMode
+  participants: ParticipantScore[]
+  questions: {
+    questionText: string
+    correctAnswer: string
+    explanation?: string
+  }[]
 }
 
 export interface BrainRingSubModeConfig {
@@ -87,8 +76,7 @@ export const SUB_MODE_INSTRUCTIONS: Record<GameMode, { title: string; rules: str
     title: 'Yakka mashq',
     rules: [
       'Savollar Brain Ring formatida — buzzer va javob vaqti.',
-      'Bu yerda o\'zingiz bilan mashq: natija va MMR demo rejimida bo\'lishi mumkin.',
-      'Tayyor bo\'lsangiz, jadvalni boshlang.',
+      'Tayyor bo\'lsangiz, o\'yinni boshlang.',
     ],
   },
   '1v1': {
@@ -103,7 +91,7 @@ export const SUB_MODE_INSTRUCTIONS: Record<GameMode, { title: string; rules: str
     title: 'Do\'stlar bilan',
     rules: [
       'Xona kodini ulashing yoki qo\'shilish kodini kiriting.',
-      'Hammasi tayyor bo\'lgach, o\'yin boshlanadi.',
+      'Xost tayyor bo\'lgach, o\'yin boshlanadi.',
       'Brain Ring qoidalari — buzzer va aniq javob muhim.',
     ],
   },

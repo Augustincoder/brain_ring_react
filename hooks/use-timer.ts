@@ -18,6 +18,7 @@ export function useTimer(options: UseTimerOptions = {}) {
   const setTimeRemaining = useGameStore((state) => state.setTimeRemaining)
   const setTimerActive = useGameStore((state) => state.setTimerActive)
   const currentPhase = useGameStore((state) => state.currentPhase)
+  const timeRemainingRef = useRef<number>(timeRemaining)
 
   const startTimer = useCallback((duration: number) => {
     setTimeRemaining(duration)
@@ -46,6 +47,20 @@ export function useTimer(options: UseTimerOptions = {}) {
      }
   }, [currentPhase, dynamicTimerMs, startTimer, stopTimer])
 
+  // ✅ FIX: Use ref for callbacks to avoid dependency changes
+  const onTimeUpRef = useRef(onTimeUp)
+  const onTickRef = useRef(onTick)
+  
+  useEffect(() => {
+    onTimeUpRef.current = onTimeUp
+    onTickRef.current = onTick
+  }, [onTimeUp, onTick])
+
+  useEffect(() => {
+    timeRemainingRef.current = timeRemaining
+  }, [timeRemaining])
+
+  // ✅ FIX: Minimal dependencies - only timerActive triggers setup/cleanup
   useEffect(() => {
     if (!timerActive) {
       if (intervalRef.current) {
@@ -55,13 +70,23 @@ export function useTimer(options: UseTimerOptions = {}) {
       return
     }
 
+    // ✅ FIX: Clear any existing interval before creating new one
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+    }
+
     intervalRef.current = setInterval(() => {
-      setTimeRemaining(Math.max(0, timeRemaining - 1))
-      onTick?.(timeRemaining - 1)
+      const next = Math.max(0, timeRemainingRef.current - 1)
+
+      setTimeRemaining(next)
+
+      // Call tick callback
+      onTickRef.current?.(next)
       
-      if (timeRemaining <= 1) {
-        stopTimer()
-        onTimeUp?.()
+      // Check if time is up
+      if (next <= 0) {
+        setTimerActive(false)
+        onTimeUpRef.current?.()
       }
     }, 1000)
 
@@ -71,7 +96,7 @@ export function useTimer(options: UseTimerOptions = {}) {
         intervalRef.current = null
       }
     }
-  }, [timerActive, timeRemaining, setTimeRemaining, stopTimer, onTimeUp, onTick])
+  }, [timerActive, setTimeRemaining, setTimerActive]) // ✅ Minimal deps
 
   const progress = timeRemaining > 0 
       ? (timeRemaining / Math.max(1, Math.floor(dynamicTimerMs / 1000) || 15)) * 100 

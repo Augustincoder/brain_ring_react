@@ -1,255 +1,194 @@
 import { create } from 'zustand'
-import type { GameMode, GamePhase, Question, AIRecheckResult } from '@/types/game'
-import type { Player } from '@/types/user'
+import { persist } from 'zustand/middleware'
+import type { GameMode, GamePhase, Question, MatchResult } from '@/types/game'
 import { normalizeQuestion } from '@/lib/normalize-question'
 
+export interface GamePlayer {
+  userId?: string
+  socketId?: string
+  username: string
+  score: number
+  correctAnswers: number
+  wrongAnswers: number
+}
+
 interface GameState {
-  // Room
   roomId: string | null
+  roomCode: string | null
   mode: GameMode | null
-
-  // Players
-  players: Player[]
-  currentPlayerId: string | null
-
-  // Question Phase
+  hostId: string | null
+  
+  players: GamePlayer[]
+  
   phase: GamePhase
   currentQuestion: Question | null
   questionNumber: number
   totalQuestions: number
-  questionStartTime: number | null
-
-  // Timer
-  timeRemaining: number
-  timerActive: boolean
-
-  // Buzzer
+  
+  // Timers — stored as absolute epoch timestamps (ms), not durations
+  // This enables server-authoritative time calculation after reconnect.
+  readingEndTime: number | null
+  answerEndTime: number | null
+  // Legacy duration fields kept for ProgressTimer compatibility (will be derived)
+  readingTimeMs: number
+  answerTimeMs: number
+  
+  // Buzzer State
   buzzerWinner: string | null
-  buzzerTimestamp: number | null
-  buzzerLocked: boolean
+  buzzerUsername: string | null
+  chancesLeft: number
+  
+  // Results
+  lastAnswerResult: {
+    userId: string
+    isCorrect: boolean
+    correctAnswer: string | null
+    givenAnswer?: string | null
+  } | null
+  questionExplanation: string | null
+  
+  matchResult: MatchResult | null
+  
+  // Track players who answered wrong for current question
+  answeredPlayers: string[]
 
-  // Answers
-  submittedAnswer: string | null
-  answeredPlayerId: string | null
-  pointsEarned: number
-  isCorrect: boolean | null
-  correctAnswer: string | null
+  // Reconnect sync guard — true while waiting for server to re-deliver state after refresh
+  isSyncing: boolean
 
-  // Scores
-  scores: Record<string, number>
-
-  // AI Recheck
-  aiRecheckPending: boolean
-  aiRecheckResult: AIRecheckResult | null
-
-  // Peer Vote
-  peerVoteActive: boolean
-  peerVotes: Record<string, boolean>
-
-  // Final Results
-  finalScores: Record<string, number> | null
-  mmrChanges: Record<string, number> | null
-  winner: string | null
-
-  // Phase 4 Engine State
-  currentPhase: 'waiting' | 'reading' | 'action' | 'input' | 'leaderboard'
-  dynamicTimerMs: number
-  lockedPlayers: string[]
-  buzzerLockedBy: string | null
-  roundResults: any | null
+  // Computed
+  isHost: (userId: string | null) => boolean
 
   // Actions
-  setRoom: (roomId: string, mode: GameMode) => void
-  setPlayers: (players: Player[]) => void
-  setCurrentPlayer: (playerId: string) => void
+  setMode: (mode: GameMode) => void
+  setRoom: (roomCode: string, mode: GameMode, hostId: string) => void
+  setPlayers: (players: GamePlayer[]) => void
+  setHostId: (hostId: string) => void
   setPhase: (phase: GamePhase) => void
-  setCurrentPhase: (phase: 'waiting' | 'reading' | 'action' | 'input' | 'leaderboard') => void
-  setQuestion: (question: Question | any, questionNumber: number, totalQuestions: number, dynamicTimerMs?: number) => void
-  setTimeRemaining: (time: number) => void
-  setTimerActive: (active: boolean) => void
-  setDynamicTimerMs: (ms: number) => void
-  setLockedPlayers: (players: string[]) => void
-  setBuzzerLockedBy: (playerId: string | null) => void
-  setRoundResults: (results: any) => void
-  pressBuzzer: (playerId: string, timestamp: number) => void
-  lockBuzzer: () => void
-  submitAnswer: (answer: string) => void
-  setAnswerResult: (playerId: string | null, isCorrect: boolean, correctAnswer: string, pointsEarned: number) => void
-  updateScore: (playerId: string, delta: number) => void
-  setScores: (scores: Record<string, number>) => void
-  requestAIRecheck: () => void
-  setAIRecheckResult: (result: AIRecheckResult) => void
-  startPeerVote: () => void
-  castPeerVote: (playerId: string, vote: boolean) => void
-  endPeerVote: (accepted: boolean) => void
-  setGameEnd: (finalScores: Record<string, number>, mmrChanges: Record<string, number>, winner: string | null) => void
-  resetQuestion: () => void
+  setQuestion: (question: Partial<Question>, index: number, total: number, readingEndTime: number, chancesLeft: number) => void
+  pressBuzzer: (buzzerId: string, buzzerUsername: string, answerEndTime: number) => void
+  setAnswerResult: (userId: string, isCorrect: boolean, correctAnswer: string | null, chancesLeft: number, givenAnswer?: string) => void
+  setQuestionReveal: (correctAnswer: string, explanation: string) => void
+  openBuzzer: (chancesLeft: number, answerEndTime: number) => void
+  setGameEnd: (result: MatchResult) => void
+  setSyncing: (val: boolean) => void
   reset: () => void
 }
 
 const initialState = {
   roomId: null,
+  roomCode: null,
   mode: null,
+  hostId: null,
   players: [],
-  currentPlayerId: null,
-  phase: 'waiting' as GamePhase,
-  currentPhase: 'waiting' as const,
-  dynamicTimerMs: 0,
-  lockedPlayers: [],
-  buzzerLockedBy: null,
-  roundResults: null,
+  phase: 'matchmaking' as GamePhase,
   currentQuestion: null,
   questionNumber: 0,
   totalQuestions: 0,
-  questionStartTime: null,
-  timeRemaining: 0,
-  timerActive: false,
+  readingEndTime: null,
+  answerEndTime: null,
+  readingTimeMs: 0,
+  answerTimeMs: 0,
   buzzerWinner: null,
-  buzzerTimestamp: null,
-  buzzerLocked: false,
-  submittedAnswer: null,
-  answeredPlayerId: null,
-  pointsEarned: 0,
-  isCorrect: null,
-  correctAnswer: null,
-  scores: {},
-  aiRecheckPending: false,
-  aiRecheckResult: null,
-  peerVoteActive: false,
-  peerVotes: {},
-  finalScores: null,
-  mmrChanges: null,
-  winner: null,
+  buzzerUsername: null,
+  chancesLeft: 3,
+  lastAnswerResult: null,
+  questionExplanation: null,
+  matchResult: null,
+  answeredPlayers: [],
+  isSyncing: false,
 }
 
-export const useGameStore = create<GameState>()((set) => ({
-  ...initialState,
+export const useGameStore = create<GameState>()(persist(
+  (set, get) => ({
+    ...initialState,
 
-  setRoom: (roomId, mode) => set({
-    roomId,
-    mode,
-    phase: 'waiting',
-    currentPhase: 'waiting',
-  }),
+    isHost: (userId) => {
+      const s = get()
+      return !!userId && !!s.hostId && s.hostId === userId
+    },
 
-  setPlayers: (players) => set({ players }),
+    setMode: (mode) => set({ mode }),
 
-  setCurrentPlayer: (playerId) => set({ currentPlayerId: playerId }),
+    setRoom: (roomCode, mode, hostId) => set({
+      roomCode,
+      mode,
+      hostId,
+      phase: 'waiting',
+    }),
 
-  setPhase: (phase) => set({ phase }),
+    setPlayers: (players) => set({ players }),
 
-  setCurrentPhase: (phase) => set({ currentPhase: phase }),
+    setHostId: (hostId) => set({ hostId }),
 
-  setQuestion: (question, questionNumber, totalQuestions, dynamicTimerMs = 15000) => set((state) => ({
-    currentQuestion: normalizeQuestion(question, state.mode, { questionNumber }),
-    questionNumber,
-    totalQuestions,
-    dynamicTimerMs,
-    currentPhase: 'reading',
-    phase: 'question',
-    lockedPlayers: [],
-    buzzerLockedBy: null,
-    buzzerWinner: null,
-    buzzerTimestamp: null,
-    buzzerLocked: false,
-    submittedAnswer: null,
-    isCorrect: null,
-    correctAnswer: null,
-    roundResults: null,
-    aiRecheckPending: false,
-    aiRecheckResult: null,
-    peerVoteActive: false,
-    peerVotes: {},
-  })),
+    setPhase: (phase) => set({ phase }),
 
-  setDynamicTimerMs: (ms) => set({ dynamicTimerMs: ms }),
-  setLockedPlayers: (players) => set({ lockedPlayers: players }),
-  setBuzzerLockedBy: (playerId) => set({ buzzerLockedBy: playerId }),
-  setRoundResults: (results) => set({ roundResults: results, currentPhase: 'leaderboard' }),
+    setQuestion: (questionObj, questionIndex, totalQuestions, readingEndTime, chancesLeft = 3) => set({
+      currentQuestion: normalizeQuestion({ ...questionObj, id: `q_${questionIndex}` }),
+      questionNumber: questionIndex,
+      totalQuestions,
+      readingEndTime,
+      readingTimeMs: Math.max(0, readingEndTime - Date.now()),
+      chancesLeft,
+      phase: 'reading',
+      buzzerWinner: null,
+      buzzerUsername: null,
+      lastAnswerResult: null,
+      questionExplanation: null,
+      answeredPlayers: [],
+      isSyncing: false, // sync complete — server delivered question
+    }),
 
-  setTimeRemaining: (time) => set({ timeRemaining: time }),
-
-  setTimerActive: (active) => set({ timerActive: active }),
-
-  pressBuzzer: (playerId, timestamp) => set((state) => {
-    if (state.buzzerLocked || state.buzzerWinner) return state
-    return {
-      buzzerWinner: playerId,
-      buzzerTimestamp: timestamp,
-      buzzerLocked: true,
+    pressBuzzer: (buzzerId, buzzerUsername, answerEndTime) => set({
+      buzzerWinner: buzzerId,
+      buzzerUsername,
+      answerEndTime,
+      answerTimeMs: Math.max(0, answerEndTime - Date.now()),
       phase: 'answering',
-    }
+    }),
+
+    setAnswerResult: (userId, isCorrect, correctAnswer, chancesLeft, givenAnswer) => set((state) => ({
+      lastAnswerResult: { userId, isCorrect, correctAnswer, givenAnswer },
+      chancesLeft,
+      phase: 'results',
+      buzzerWinner: null,
+      buzzerUsername: null,
+      answeredPlayers: [...state.answeredPlayers, userId],
+    })),
+
+    setQuestionReveal: (correctAnswer, explanation) => set({
+      lastAnswerResult: { userId: '', isCorrect: false, correctAnswer },
+      questionExplanation: explanation,
+      phase: 'reveal',
+    }),
+
+    openBuzzer: (chancesLeft, answerEndTime) => set({
+      chancesLeft,
+      answerEndTime,
+      answerTimeMs: Math.max(0, answerEndTime - Date.now()),
+      phase: 'buzzing',
+      buzzerWinner: null,
+      buzzerUsername: null,
+    }),
+
+    setGameEnd: (result) => set({
+      matchResult: result,
+      phase: 'finished',
+    }),
+
+    setSyncing: (val) => set({ isSyncing: val }),
+
+    reset: () => set(initialState),
   }),
-
-  lockBuzzer: () => set({ buzzerLocked: true }),
-
-  submitAnswer: (answer) => set({
-    submittedAnswer: answer,
-  }),
-
-  setAnswerResult: (playerId, isCorrect, correctAnswer, pointsEarned) => set({
-    answeredPlayerId: playerId,
-    isCorrect,
-    correctAnswer,
-    pointsEarned,
-    phase: 'results',
-  }),
-
-  updateScore: (playerId, delta) => set((state) => ({
-    scores: {
-      ...state.scores,
-      [playerId]: (state.scores[playerId] ?? 0) + delta,
-    },
-  })),
-
-  setScores: (scores) => set({ scores }),
-
-  requestAIRecheck: () => set({ aiRecheckPending: true }),
-
-  setAIRecheckResult: (result) => set({
-    aiRecheckPending: false,
-    aiRecheckResult: result,
-  }),
-
-  startPeerVote: () => set({
-    peerVoteActive: true,
-    peerVotes: {},
-  }),
-
-  castPeerVote: (playerId, vote) => set((state) => ({
-    peerVotes: {
-      ...state.peerVotes,
-      [playerId]: vote,
-    },
-  })),
-
-  endPeerVote: (accepted) => set((state) => ({
-    peerVoteActive: false,
-    isCorrect: accepted ? true : state.isCorrect,
-  })),
-
-  setGameEnd: (finalScores, mmrChanges, winner) => set({
-    finalScores,
-    mmrChanges,
-    winner,
-    phase: 'finished',
-  }),
-
-  resetQuestion: () => set({
-    currentQuestion: null,
-    questionStartTime: null,
-    timeRemaining: 0,
-    buzzerWinner: null,
-    buzzerTimestamp: null,
-    buzzerLocked: false,
-    submittedAnswer: null,
-    isCorrect: null,
-    correctAnswer: null,
-    aiRecheckPending: false,
-    aiRecheckResult: null,
-    peerVoteActive: false,
-    peerVotes: {},
-  }),
-
-  reset: () => set(initialState),
-}))
+  {
+    name: 'game-session',
+    // ONLY persist the minimal session keys needed to detect and trigger reconnection.
+    // All live game state is re-delivered by the server on rejoin.
+    partialize: (state) => ({
+      roomCode: state.roomCode,
+      mode: state.mode,
+      phase: state.phase,
+      questionNumber: state.questionNumber,
+      totalQuestions: state.totalQuestions,
+    }),
+  }
+))

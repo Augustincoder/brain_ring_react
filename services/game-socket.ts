@@ -1,45 +1,41 @@
 import { io, Socket } from 'socket.io-client'
-import type { SocketEvent, SocketEventType } from '@/types/socket'
-import type { GameMode, ServerGameKind } from '@/types/game'
+import type { SocketEventType } from '@/types/socket'
+import { useUserStore } from '@/store/user-store'
 
-// URL config (Adjust for Production)
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8080'
-const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true'
-
-const SERVER_GAME: ServerGameKind = 'brain-ring'
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000'
 
 let socketInstance: GameSocket | null = null
 
-/** Maps UI `group` to the legacy socket match type `friends`. */
-function matchTypeForSocket(subMode: GameMode): 'solo' | '1v1' | 'friends' {
-  return subMode === 'group' ? 'friends' : subMode
-}
-
 export class GameSocket {
   private socket: Socket | null = null
+  private eventListeners: Map<SocketEventType, Array<(payload: any) => void>> = new Map()
 
   async connect(): Promise<void> {
     if (this.socket?.connected) return
 
-    let initData = ''
-    if (USE_MOCK_AUTH) {
-      // Mock Auth for local development
-      const mockUser = { id: 1234567, first_name: "MockUser" }
-      initData = `mock_user_id=123&user=${encodeURIComponent(JSON.stringify(mockUser))}`
-    } else if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      // Real Telegram Auth
-      initData = window.Telegram.WebApp.initData
+    const token = useUserStore.getState().token
+    if (!token) {
+      throw new Error('Not authenticated')
     }
 
     this.socket = io(SOCKET_URL, {
-      auth: { initData },
+      auth: { token },
       transports: ['websocket', 'polling']
+    })
+
+    // Flus buffered listeners immediately upon socket creation
+    this.eventListeners.forEach((callbacks, event) => {
+      callbacks.forEach(cb => this.socket?.on(event, cb))
     })
 
     return new Promise((resolve, reject) => {
       this.socket?.on('connect', () => resolve())
       this.socket?.on('connect_error', (err) => reject(err))
     })
+  }
+
+  isConnected(): boolean {
+    return this.socket?.connected === true
   }
 
   disconnect(): void {
@@ -50,60 +46,57 @@ export class GameSocket {
   }
 
   on(event: SocketEventType, callback: (payload: any) => void): void {
-    this.socket?.on(event, callback)
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, [])
+    }
+    this.eventListeners.get(event)!.push(callback)
+    
+    if (this.socket) {
+      this.socket.on(event, callback)
+    }
   }
 
   off(event: SocketEventType, callback?: (payload: any) => void): void {
     if (callback) {
-      this.socket?.off(event, callback)
+        const listeners = this.eventListeners.get(event)
+        if (listeners) {
+            this.eventListeners.set(event, listeners.filter((cb) => cb !== callback))
+        }
+        this.socket?.off(event, callback)
     } else {
-      this.socket?.off(event)
+        this.eventListeners.delete(event)
+        this.socket?.off(event)
     }
   }
 
-  private currentRoom: string | null = null
-
-  async joinRoom(roomId: string, subMode: GameMode): Promise<void> {
-    if (!this.socket?.connected) await this.connect()
-
-    this.currentRoom = roomId
-    const matchType = matchTypeForSocket(subMode)
-
-    return new Promise((resolve) => {
-      this.socket?.emit('room:create', {
-        roomCode: roomId,
-        mode: SERVER_GAME,
-        hostId: 'user',
-        displayName: 'Player',
-      })
-
-      setTimeout(() => {
-        this.socket?.emit('room:join', { roomCode: roomId, userId: 'user', displayName: 'Player' })
-
-        if (matchType === 'solo') {
-          setTimeout(() => {
-            this.socket?.emit('room:start', { roomCode: roomId })
-          }, 100)
-        }
-        resolve()
-      }, 100)
-    })
+  // Outbound events matching new backend
+  createRoom(gameType: 'solo' | '1v1' | 'group'): void {
+    this.socket?.emit('create_room', { gameType })
   }
 
-  async submitBuzzer(playerId: string, timestamp: number): Promise<void> {
-    this.socket?.emit('buzzer:press', { roomCode: this.currentRoom, userId: 'user', timestamp })
+  joinRoom(roomCode: string): void {
+    this.socket?.emit('join_room', { roomCode })
   }
 
-  async submitAnswer(playerId: string, answer: string): Promise<void> {
-    this.socket?.emit('buzzer:answer_submit', { roomCode: this.currentRoom, userId: 'user', answer })
+  /**
+   * Re-emits join_room after a browser refresh.
+   * The backend's join_room handler detects the existing player and
+   * re-delivers the full current game state (question_ready, buzzer_open, etc.).
+   */
+  rejoinRoom(roomCode: string): void {
+    this.socket?.emit('join_room', { roomCode })
   }
 
-  async requestAIRecheck(questionId: string, playerId: string, answer: string): Promise<void> {
-    this.socket?.emit('request_ai_recheck', { questionId, answer, correctAnswer: '' })
+  startGame(): void {
+    this.socket?.emit('start_game')
   }
 
-  startPeerVote(questionId: string, playerId: string, answer: string): void {
-    this.socket?.emit('start_peer_vote', { questionId, answer })
+  buzzIn(): void {
+    this.socket?.emit('buzz_in')
+  }
+
+  submitAnswer(answer: string): void {
+    this.socket?.emit('submit_answer', { answer })
   }
 }
 

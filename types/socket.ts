@@ -1,122 +1,121 @@
-import type { Question, AIRecheckResult, ServerGameKind } from './game'
-import type { Player } from './user'
+import type { Question, MatchResult } from './game'
 
 export type SocketEventType =
   | 'connect'
   | 'disconnect'
-  | 'join_room'
-  | 'room_joined'
+  | 'connect_error'
+  | 'room_created'
   | 'player_joined'
   | 'player_left'
-  | 'game_start'
-  | 'question_start'
-  | 'time_up'
-  | 'buzzer_pressed'
-  | 'buzzer_result'
-  | 'answer_submitted'
+  | 'game_starting'
+  | 'question_ready'
+  | 'player_answering'
   | 'answer_result'
-  | 'ai_recheck_requested'
-  | 'ai_recheck_result'
-  | 'peer_vote_start'
-  | 'peer_vote_cast'
-  | 'peer_vote_result'
-  | 'score_update'
-  | 'game_end'
+  | 'question_timeout'
+  | 'question_reveal'
+  | 'buzzer_open'
+  | 'match_results'
+  | 'host_changed'
   | 'error'
-  | 'game:question'
-  | 'game:phase_action'
-  | 'game:round_result'
-  | 'buzzer:locked'
-  | 'buzzer:reactivate'
-  | 'buzzer:result'
 
 export interface SocketEvent {
   type: SocketEventType
   payload?: unknown
 }
 
+// Emitted by Client
+export interface CreateRoomPayload {
+  gameType: 'solo' | '1v1' | 'group'
+}
+
 export interface JoinRoomPayload {
-  roomId: string
-  /** Always Brain Ring on the server; kept for typed socket docs. */
-  mode: ServerGameKind
+  roomCode: string
 }
 
-export interface RoomJoinedPayload {
-  roomId: string
-  players: Player[]
-  mode?: ServerGameKind
-}
-
-export interface QuestionStartPayload {
-  question: Question
-  duration: number
-  questionNumber: number
-  totalQuestions: number
-}
-
-export interface BuzzerPressedPayload {
-  playerId: string
-  timestamp: number
-}
-
-export interface BuzzerResultPayload {
-  winnerId: string
-  timestamp: number
-}
-
-export interface AnswerSubmittedPayload {
-  playerId: string
+export interface SubmitAnswerPayload {
   answer: string
-  timestamp: number
+}
+
+// Received from Server
+export interface RoomCreatedPayload {
+  roomCode: string
+  gameType: 'solo' | '1v1' | 'group'
+  players: any[]
+}
+
+export interface PlayerJoinedPayload {
+  userId: string
+  username: string
+  players: any[]
+}
+
+export interface PlayerLeftPayload {
+  userId: string
+  username: string
+  players: any[]
+}
+
+export interface GameStartingPayload {
+  gameType: 'solo' | '1v1' | 'group'
+  totalQuestions: number
+  players: any[]
+}
+
+export interface QuestionReadyPayload {
+  questionIndex: number
+  totalQuestions: number
+  questionText: string
+  readingTimeMs: number
+  /** Absolute epoch ms when the reading phase ends. Used for server-authoritative timer. */
+  endTime: number
+  chancesLeft?: number
+  players?: any[]
+}
+
+export interface PlayerAnsweringPayload {
+  buzzerId: string
+  buzzerUsername: string
+  answerTimeMs: number
+  /** Absolute epoch ms when the answer window ends. */
+  endTime: number
 }
 
 export interface AnswerResultPayload {
-  playerId: string
+  userId: string
+  username: string
   isCorrect: boolean
+  correctAnswer: string | null
+  chancesLeft: number
+  players?: any[]
+  timedOut?: boolean
+  givenAnswer?: string
+}
+
+export interface QuestionTimeoutPayload {
+  questionIndex: number
   correctAnswer: string
-  pointsEarned: number
+  explanation: string
 }
 
-export interface AIRecheckRequestPayload {
-  questionId: string
-  playerId: string
-  answer: string
+export interface QuestionRevealPayload {
+  questionIndex: number
+  correctAnswer: string
+  explanation: string
 }
 
-export interface AIRecheckResultPayload extends AIRecheckResult {
-  questionId: string
-  playerId: string
+export interface BuzzerOpenPayload {
+  chancesLeft: number
+  answerTimeMs: number
+  /** Absolute epoch ms when the buzzer window ends. */
+  endTime: number
 }
 
-export interface PeerVoteStartPayload {
-  questionId: string
-  playerId: string
-  answer: string
-}
+export interface MatchResultsPayload extends MatchResult {}
 
-export interface PeerVoteCastPayload {
-  voterId: string
-  vote: boolean
-}
-
-export interface PeerVoteResultPayload {
-  accepted: boolean
-  votes: Record<string, boolean>
-  totalYes: number
-  totalNo: number
-}
-
-export interface ScoreUpdatePayload {
-  scores: Record<string, number>
-}
-
-export interface GameEndPayload {
-  finalScores: Record<string, number>
-  mmrChanges: Record<string, number>
-  winner: string | null
+export interface HostChangedPayload {
+  newHostId: string
 }
 
 export interface ErrorPayload {
-  code: string
   message: string
 }

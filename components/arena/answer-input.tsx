@@ -31,12 +31,6 @@ export function AnswerInput({
   const [timeRemaining, setTimeRemaining] = useState(timeLimit)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const currentPhase = useGameStore((state) => state.currentPhase)
-  const buzzerLockedBy = useGameStore((state) => state.buzzerLockedBy)
-  const userId = useUserStore((state) => state.id)
-  const activeUserId = userId || 'user'
-
-
   useEffect(() => {
     // Focus input on mount, after a slight delay to let Framer Motion animations play out
     // and to ensure mobile WebView has time to paint before focusing
@@ -72,10 +66,6 @@ export function AnswerInput({
     onSubmit(answer.trim())
   }
 
-  if (currentPhase !== 'input' || buzzerLockedBy !== activeUserId) {
-    return null
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -91,14 +81,7 @@ export function AnswerInput({
       )}
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 16px), 16px)' }}
     >
-      {/* Timer */}
-      <div className="flex justify-center mb-4">
-        <ProgressTimer
-          timeRemaining={timeRemaining}
-          totalTime={timeLimit}
-          variant="circle"
-        />
-      </div>
+
 
       {/* Input form */}
       <form onSubmit={handleSubmit} className="flex gap-2">

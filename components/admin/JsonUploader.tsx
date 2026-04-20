@@ -3,20 +3,21 @@
 import React, { useState } from 'react';
 import { ZodSchema } from 'zod';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
+import { UploadCloud, Loader2 } from 'lucide-react';
 
 interface JsonUploaderProps {
   mode: 'brain-ring';
   schema: ZodSchema<any>;
+  onSuccess?: () => void;
 }
 
-export function JsonUploader({ mode, schema }: JsonUploaderProps) {
+export function JsonUploader({ mode, schema, onSuccess }: JsonUploaderProps) {
   const [errors, setErrors] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     setErrors([]);
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -32,56 +33,92 @@ export function JsonUploader({ mode, schema }: JsonUploaderProps) {
         }
 
         setIsUploading(true);
-        const apiUrl = process.env.NEXT_PUBLIC_ADMIN_API_URL || 'http://localhost:8080/api/admin/upload-questions';
         
-        const res = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode, data: parseResult.data })
-        });
+        const res = await api.post('/api/admin/questions/bulk', { mode, data: parseResult.data });
 
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || 'Upload failed');
+        if (res.data.success) {
+          toast.success(`${mode} questions uploaded successfully!`);
+          if (onSuccess) onSuccess();
+        } else {
+          throw new Error('Upload failed from server response');
         }
-
-        toast.success(`${mode} questions uploaded successfully!`);
       } catch (err: any) {
-        setErrors([err.message || 'An unexpected error occurred']);
+        setErrors([err.message || 'An unexpected error occurred during parsing or upload']);
         toast.error('Upload failed');
       } finally {
         setIsUploading(false);
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
     e.target.value = '';
   };
 
-  return (
-    <div className="p-6 border rounded-xl shadow-sm space-y-4 bg-white text-black">
-      <h3 className="text-xl font-bold capitalize">{mode.replace('-', ' ')} Uploader</h3>
-      
-      <input 
-        type="file" 
-        accept=".json" 
-        onChange={handleFileChange}
-        disabled={isUploading}
-        className="block w-full text-sm text-gray-700
-          file:mr-4 file:py-2 file:px-4
-          file:rounded-md file:border-0
-          file:text-sm file:font-semibold
-          file:bg-blue-50 file:text-blue-700
-          hover:file:bg-blue-100 cursor-pointer"
-      />
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
 
-      {isUploading && <p className="text-sm text-blue-600 animate-pulse font-medium">Uploading...</p>}
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.name.endsWith('.json')) {
+      processFile(file);
+    } else {
+      toast.error("Please drop a valid .json file");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div 
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors flex flex-col items-center justify-center
+          ${isDragging ? 'border-neutral-500 bg-neutral-800' : 'border-neutral-800 bg-neutral-950 hover:bg-neutral-900'}
+          ${isUploading ? 'opacity-50 pointer-events-none' : ''}
+        `}
+      >
+        <input 
+          type="file" 
+          accept=".json" 
+          onChange={handleFileChange}
+          disabled={isUploading}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+        
+        <div className="rounded-full bg-neutral-900 py-3 px-3 mb-4 border border-neutral-800 text-neutral-400 group-hover:text-white transition-colors">
+          {isUploading ? (
+            <Loader2 className="h-6 w-6 animate-spin text-white" />
+          ) : (
+            <UploadCloud className="h-6 w-6" />
+          )}
+        </div>
+        
+        <h3 className="text-lg font-semibold text-white mb-1">
+          {isUploading ? 'Processing Upload...' : 'Upload Questions JSON'}
+        </h3>
+        <p className="text-sm text-neutral-400 max-w-xs mx-auto">
+          Drag and drop your JSON file here, or click to select from your device.
+        </p>
+      </div>
 
       {errors.length > 0 && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm mt-4 border border-red-200">
+        <div className="bg-red-950/30 text-red-500 p-4 rounded-lg text-sm border border-red-900/50">
           <p className="font-semibold mb-2">Validation Errors:</p>
           <ul className="list-disc pl-5 space-y-1">
             {errors.map((err, i) => (
-              <li key={i}>{err}</li>
+              <li key={i} className="text-red-400">{err}</li>
             ))}
           </ul>
         </div>

@@ -5,26 +5,28 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Brain } from 'lucide-react'
 import { AppShell } from '@/components/layout/app-shell'
-import { useTelegram } from '@/hooks/use-telegram'
+import { useUserStore } from '@/store/user-store'
 import { SPLASH_DURATION } from '@/lib/constants'
 
 export default function SplashPage() {
   const router = useRouter()
-  const { isReady } = useTelegram()
+  const { isAuthenticated } = useUserStore()
   const [showSplash, setShowSplash] = useState(true)
 
   useEffect(() => {
-    if (!isReady) return
-
     const timer = setTimeout(() => {
       setShowSplash(false)
       setTimeout(() => {
-        router.push('/lobby')
+        if (isAuthenticated) {
+          router.push('/lobby')
+        } else {
+          router.push('/login')
+        }
       }, 500)
     }, SPLASH_DURATION)
 
     return () => clearTimeout(timer)
-  }, [isReady, router])
+  }, [isAuthenticated, router])
 
   return (
     <AppShell className="items-center justify-center">

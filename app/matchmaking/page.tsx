@@ -1,123 +1,101 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState, useCallback, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AppShell } from '@/components/layout/app-shell'
 import { TgSafeArea } from '@/components/layout/tg-safe-area'
 import { PulseLoader } from '@/components/matchmaking/pulse-loader'
-import { OpponentFound } from '@/components/matchmaking/opponent-found'
-import { InstructionModal } from '@/components/lobby/instruction-modal'
 import { RoomInvite } from '@/components/lobby/room-invite'
 import { Button } from '@/components/ui/button'
 import { useGameStore } from '@/store/game-store'
 import { useUserStore } from '@/store/user-store'
-import { useTelegram } from '@/hooks/use-telegram'
+import { useGameSocket } from '@/hooks/use-game-socket'
 import { BRAIN_RING_SUB_MODES, formatBrainRingSessionLabel } from '@/types/game'
-import type { Player } from '@/types/user'
 import { X } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
-const ARENA_PATH = '/arena/brain-ring'
-
-const mockOpponents: Player[] = [
-  { id: 'opp1', username: 'Jasur', avatar: '', mmr: 1150, gamesPlayed: 45, wins: 28, losses: 17, isReady: true, score: 0, connected: true },
-  { id: 'opp2', username: 'Malika', avatar: '', mmr: 980, gamesPlayed: 32, wins: 18, losses: 14, isReady: true, score: 0, connected: true },
-  { id: 'opp3', username: 'Sardor', avatar: '', mmr: 1250, gamesPlayed: 67, wins: 42, losses: 25, isReady: true, score: 0, connected: true },
-]
-
-function generateRoomCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let result = ''
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
-}
-
-export default function MatchmakingPage() {
+function MatchmakingContent() {
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
   const router = useRouter()
-  const { showBack, hideBack, haptic } = useTelegram()
-  const [opponentFound, setOpponentFound] = useState(false)
-  const [opponent, setOpponent] = useState<Player | null>(null)
-  const [showInstructions, setShowInstructions] = useState(true)
-  const [instructionsConfirmed, setInstructionsConfirmed] = useState(false)
-  const [roomCode] = useState(() => generateRoomCode())
+  const { connect, disconnect, createRoom, startGame, joinRoom } = useGameSocket()
 
   const mode = useGameStore((state) => state.mode)
-  const setPlayers = useGameStore((state) => state.setPlayers)
-  const reset = useGameStore((state) => state.reset)
+  const roomCode = useGameStore((state) => state.roomCode)
+  const players = useGameStore((state) => state.players)
+  const isHost = useGameStore((state) => state.isHost)
+  const userId = useUserStore((state) => state._id)
 
-  const userId = useUserStore((state) => state.id)
-  const username = useUserStore((state) => state.username)
-  const avatar = useUserStore((state) => state.avatar)
-  const mmr = useUserStore((state) => state.mmr)
-
+  const setMode = useGameStore((state) => state.setMode)
   const modeConfig = BRAIN_RING_SUB_MODES.find((m) => m.id === mode)
 
-  const currentPlayer: Player = {
-    id: userId || 'user',
-    username,
-    avatar,
-    mmr,
-    gamesPlayed: 0,
-    wins: 0,
-    losses: 0,
-    isReady: true,
-    score: 0,
-    connected: true,
-  }
-
   const handleCancel = useCallback(() => {
-    reset()
+    disconnect()
+    useGameStore.getState().reset()
     router.push('/lobby')
-  }, [reset, router])
+  }, [disconnect, router])
+
+  const handleJoinByCode = useCallback((code: string) => {
+    // Optimistic UI state
+    useGameStore.getState().setRoom(code, useGameStore.getState().mode || 'group', '')
+    // Leave previous room implicitly by standard socket logic
+    joinRoom(code)
+  }, [joinRoom])
+
+  const mountedRef = useRef(false)
 
   useEffect(() => {
-    showBack(handleCancel)
-    return () => hideBack()
-  }, [showBack, hideBack, handleCancel])
+    if (mountedRef.current) return
+    mountedRef.current = true
 
-  const handleInstructionConfirm = useCallback(() => {
-    setShowInstructions(false)
-    setInstructionsConfirmed(true)
-    haptic('medium')
-  }, [haptic])
+    const queryRoomCode = searchParams.get('roomCode')
 
-  useEffect(() => {
+    if (queryRoomCode) {
+      const code = queryRoomCode.toUpperCase()
+      if (!mode) setMode('group')
+      
+      // Optimistically set room to bypass 'Tarmoqqa ulanmoqda' screen immediately
+      useGameStore.getState().setRoom(code, mode || 'group', '')
+      
+      connect().then(() => {
+        joinRoom(code)
+      }).catch((err) => {
+        toast({ title: 'Xatolik', description: 'Ulanishda xatolik yuz berdi.', variant: 'destructive' })
+        handleCancel()
+      })
+      return
+    }
+
     if (!mode) {
       router.push('/lobby')
       return
     }
 
-    if (!instructionsConfirmed) return
-
-    if (mode === 'group') return
-
-    const matchDelay = mode === 'solo' ? 1000 : 2000 + Math.random() * 2000
-
-    const findOpponentTimer = setTimeout(() => {
-      const randomOpponent = mockOpponents[Math.floor(Math.random() * mockOpponents.length)]
-      setOpponent(randomOpponent)
-      setOpponentFound(true)
-      haptic('success')
-
-      setPlayers([currentPlayer, randomOpponent])
-    }, matchDelay)
-
-    return () => clearTimeout(findOpponentTimer)
-  }, [mode, router, haptic, setPlayers, instructionsConfirmed])
+    connect().then(() => {
+      createRoom(mode)
+    }).catch((err) => {
+      toast({ title: 'Xatolik', description: 'Ulanishda xatolik yuz berdi.', variant: 'destructive' })
+      handleCancel()
+    })
+  }, [mode, router, connect, createRoom, joinRoom, handleCancel, searchParams, setMode, toast])
 
   useEffect(() => {
-    if (opponentFound && opponent) {
-      const navigateTimer = setTimeout(() => {
-        router.push(ARENA_PATH)
-      }, 2500)
-
-      return () => clearTimeout(navigateTimer)
+    if (mode === 'solo' && roomCode && Object.keys(players).length > 0 && isHost(userId)) {
+      setTimeout(() => startGame(), 1000)
     }
-  }, [opponentFound, opponent, router])
+  }, [mode, roomCode, players, startGame, isHost, userId])
 
-  const deepLink = `https://t.me/AqliyOyinlarBot/app?startapp=${roomCode}`
+  const handleStartGame = () => {
+    if (players.length < 2) {
+      toast({ title: 'Ogohlantirish', description: "Kamida 2 ta o'yinchi kerak!", variant: 'destructive' })
+      return
+    }
+    startGame()
+  }
+
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '')
+  const deepLink = `${siteUrl}/matchmaking?roomCode=${roomCode}`
 
   return (
     <AppShell>
@@ -126,99 +104,72 @@ export default function MatchmakingPage() {
           <div className="flex items-center justify-between border-b border-border/30 p-4">
             <div>
               <h1 className="font-semibold text-foreground">
-                {modeConfig?.nameUz || 'Loading...'}
+                {modeConfig?.nameUz || 'Yuklanmoqda...'}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {formatBrainRingSessionLabel(mode)}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCancel}
-              className="rounded-full"
-            >
+            <Button variant="ghost" size="icon" onClick={handleCancel} className="rounded-full">
               <X className="h-5 w-5" />
             </Button>
           </div>
 
           <div className="flex flex-1 items-center justify-center p-6">
             <AnimatePresence mode="wait">
-              {!instructionsConfirmed ? (
-                <motion.div
-                  key="waiting-instructions"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-col items-center gap-4"
-                >
-                  <motion.p
-                    className="text-center text-sm text-muted-foreground"
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    Qoidalarni o&apos;qing...
-                  </motion.p>
+              {mode === 'group' && roomCode ? (
+                <motion.div key="room-invite" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-md">
+                  <div className="text-center mb-6">
+                    <h2 className="text-4xl font-black tracking-widest text-primary mb-2 select-all">{roomCode}</h2>
+                    <p className="text-sm text-muted-foreground">Xos Xona Kodi</p>
+                  </div>
+                  <RoomInvite roomCode={roomCode} deepLink={deepLink} players={players.map((p: any) => ({ ...p, name: p.username, id: p.userId, isReady: true }))} onJoinByCode={handleJoinByCode} />
+                  {isHost(userId) ? (
+                    <Button onClick={handleStartGame} className="w-full mt-6 h-14 text-lg font-bold shadow-lg" size="lg">O'yinni boshlash</Button>
+                  ) : (
+                    <p className="text-muted-foreground text-center mt-6">Xost o'yinni boshlashini kuting...</p>
+                  )}
                 </motion.div>
-              ) : mode === 'group' && !opponentFound ? (
-                <motion.div
-                  key="room-invite"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="w-full max-w-md"
-                >
-                  <RoomInvite
-                    roomCode={roomCode}
-                    deepLink={deepLink}
-                    players={[
-                      { id: userId || 'user', name: username, isReady: true },
-                    ]}
-                  />
-                </motion.div>
-              ) : !opponentFound ? (
-                <motion.div
-                  key="searching"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="flex flex-col items-center gap-8"
-                >
+              ) : (mode === '1v1' && roomCode && players.length < 2) ? (
+                <motion.div key="searching" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-8">
                   <PulseLoader className="h-48 w-48" />
                   <div className="text-center">
-                    <motion.p
-                      className="text-lg font-medium text-foreground"
-                      animate={{ opacity: [1, 0.5, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      Raqib qidirilmoqda...
+                    <motion.p className="text-lg font-medium text-foreground" animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+                      Raqib kutilmoqda...
                     </motion.p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Bu biroz vaqt olishi mumkin
-                    </p>
+                    <p className="mt-1 flex items-center justify-center gap-2 text-sm text-muted-foreground transition-all">Xona: <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-md">{roomCode}</span></p>
                   </div>
                 </motion.div>
-              ) : opponent ? (
-                <motion.div
-                  key="found"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <OpponentFound
-                    currentPlayer={currentPlayer}
-                    opponent={opponent}
-                  />
+              ) : (mode === '1v1' && roomCode && players.length >= 2) ? (
+                <motion.div key="found" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center bg-card p-10 rounded-3xl shadow-xl border border-primary/20">
+                  <div className="w-24 h-24 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6 border-2 border-emerald-500/20">
+                    <span className="text-4xl">⚔️</span>
+                  </div>
+                  <h2 className="text-3xl font-black text-emerald-500 mb-6 drop-shadow-sm">Raqib topildi!</h2>
+                  {isHost(userId) ? (
+                    <Button onClick={handleStartGame} size="lg" className="h-14 px-10 text-lg font-bold shadow-lg shadow-emerald-500/25">O'yinni boshlash</Button>
+                  ) : (
+                    <p className="text-muted-foreground font-medium animate-pulse">Tarmoq sinxronlanmoqda...</p>
+                  )}
                 </motion.div>
-              ) : null}
+              ) : (
+                <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-4">
+                  <PulseLoader className="h-24 w-24 opacity-50" />
+                  <p className="text-muted-foreground font-medium animate-pulse">Tarmoqqa ulanmoqda...</p>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </div>
-
-        <InstructionModal
-          open={showInstructions && !!mode}
-          mode={mode}
-          onConfirm={handleInstructionConfirm}
-        />
       </TgSafeArea>
     </AppShell>
+  )
+}
+
+export default function MatchmakingPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background"><PulseLoader className="h-16 w-16 opacity-50" /></div>}>
+      <MatchmakingContent />
+    </Suspense>
   )
 }
