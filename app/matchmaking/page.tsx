@@ -168,7 +168,7 @@ function MatchmakingContent() {
 
 export default function MatchmakingPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background"><PulseLoader className="h-16 w-16 opacity-50" /></div>}>
+    <Suspense fallback={<div className="flex h-[100dvh] items-center justify-center bg-background"><PulseLoader className="h-16 w-16 opacity-50" /></div>}>
       <MatchmakingContent />
     </Suspense>
   )

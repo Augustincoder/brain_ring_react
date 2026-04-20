@@ -63,53 +63,55 @@ export function QuestionsTab() {
       <JsonUploader mode="brain-ring" schema={brainRingSchema} onSuccess={fetchQuestions} />
 
       <div className="border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950">
-        <Table>
-          <TableHeader className="bg-neutral-900 border-b border-neutral-800 hover:bg-neutral-900">
-            <TableRow className="border-neutral-800 hover:bg-transparent">
-              <TableHead className="text-neutral-400">Question</TableHead>
-              <TableHead className="text-neutral-400 w-32">Category</TableHead>
-              <TableHead className="text-neutral-400 text-center w-24">Difficulty</TableHead>
-              <TableHead className="text-neutral-400 text-right w-24">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="border-neutral-800 hover:bg-neutral-900/50">
-                  <TableCell><Skeleton className="h-4 w-full bg-neutral-800" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24 bg-neutral-800" /></TableCell>
-                  <TableCell align="center"><Skeleton className="h-6 w-12 bg-neutral-800 mx-auto" /></TableCell>
-                  <TableCell align="right"><Skeleton className="h-8 w-8 bg-neutral-800 ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            ) : questions.length === 0 ? (
-              <TableRow className="border-neutral-800 focus:bg-transparent hover:bg-transparent">
-                <TableCell colSpan={4} className="h-32 text-center text-neutral-500">
-                  No questions found. Upload some to get started.
-                </TableCell>
+        <div className="w-full overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-neutral-900 border-b border-neutral-800 hover:bg-neutral-900">
+              <TableRow className="border-neutral-800 hover:bg-transparent">
+                <TableHead className="text-neutral-400">Question</TableHead>
+                <TableHead className="text-neutral-400 w-32">Category</TableHead>
+                <TableHead className="text-neutral-400 text-center w-24">Difficulty</TableHead>
+                <TableHead className="text-neutral-400 text-right w-24">Actions</TableHead>
               </TableRow>
-            ) : (
-              questions.map((q) => (
-                <TableRow key={q._id} className="border-neutral-800 hover:bg-neutral-900/50">
-                  <TableCell className="font-medium text-neutral-200 line-clamp-1 max-w-md" title={q.text}>
-                    {q.text}
-                  </TableCell>
-                  <TableCell className="text-neutral-400">{q.category || 'General'}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline" className="bg-neutral-900 border-neutral-700 text-neutral-300">
-                      {q.difficulty || 1}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-300 hover:bg-red-950/30" onClick={() => handleDelete(q._id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-neutral-800 hover:bg-neutral-900/50">
+                    <TableCell><Skeleton className="h-4 w-full bg-neutral-800" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24 bg-neutral-800" /></TableCell>
+                    <TableCell align="center"><Skeleton className="h-6 w-12 bg-neutral-800 mx-auto" /></TableCell>
+                    <TableCell align="right"><Skeleton className="h-8 w-8 bg-neutral-800 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : questions.length === 0 ? (
+                <TableRow className="border-neutral-800 focus:bg-transparent hover:bg-transparent">
+                  <TableCell colSpan={4} className="h-32 text-center text-neutral-500">
+                    No questions found. Upload some to get started.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                questions.map((q) => (
+                  <TableRow key={q._id} className="border-neutral-800 hover:bg-neutral-900/50">
+                    <TableCell className="font-medium text-neutral-200 line-clamp-1 max-w-md" title={q.text}>
+                      {q.text}
+                    </TableCell>
+                    <TableCell className="text-neutral-400">{q.category || 'General'}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="bg-neutral-900 border-neutral-700 text-neutral-300">
+                        {q.difficulty || 1}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-300 hover:bg-red-950/30" onClick={() => handleDelete(q._id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

@@ -109,7 +109,7 @@ export function UsersTab() {
               <UserPlus className="mr-2 h-4 w-4" /> Add User
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] bg-neutral-950 border-neutral-800 text-white">
+          <DialogContent className="sm:max-w-[425px] bg-neutral-950 border-neutral-800 text-white max-h-[85dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
               <DialogDescription className="text-neutral-400">
@@ -123,7 +123,7 @@ export function UsersTab() {
                   id="username" 
                   value={newUsername} 
                   onChange={(e) => setNewUsername(e.target.value)} 
-                  className="bg-neutral-900 border-neutral-800 focus-visible:ring-neutral-700"
+                  className="bg-neutral-900 border-neutral-800 focus-visible:ring-neutral-700 text-base min-h-[44px]"
                   placeholder="e.g. brain_master_99"
                 />
               </div>
@@ -134,7 +134,7 @@ export function UsersTab() {
                   type="password"
                   value={newPassword} 
                   onChange={(e) => setNewPassword(e.target.value)} 
-                  className="bg-neutral-900 border-neutral-800 focus-visible:ring-neutral-700"
+                  className="bg-neutral-900 border-neutral-800 focus-visible:ring-neutral-700 text-base min-h-[44px]"
                 />
               </div>
               <div className="grid gap-2">
@@ -165,62 +165,64 @@ export function UsersTab() {
       </div>
 
       <div className="border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950">
-        <Table>
-          <TableHeader className="bg-neutral-900 border-b border-neutral-800 hover:bg-neutral-900">
-            <TableRow className="border-neutral-800 hover:bg-transparent">
-              <TableHead className="text-neutral-400">Username</TableHead>
-              <TableHead className="text-neutral-400 w-32">Role</TableHead>
-              <TableHead className="text-neutral-400 w-32">Joined At</TableHead>
-              <TableHead className="text-neutral-400 text-right w-24">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="border-neutral-800 hover:bg-neutral-900/50">
-                  <TableCell><Skeleton className="h-4 w-32 bg-neutral-800" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-20 bg-neutral-800" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24 bg-neutral-800" /></TableCell>
-                  <TableCell align="right"><Skeleton className="h-8 w-8 bg-neutral-800 ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            ) : users.length === 0 ? (
-              <TableRow className="border-neutral-800 focus:bg-transparent hover:bg-transparent">
-                <TableCell colSpan={4} className="h-32 text-center text-neutral-500">
-                  No users found in database.
-                </TableCell>
+        <div className="w-full overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-neutral-900 border-b border-neutral-800 hover:bg-neutral-900">
+              <TableRow className="border-neutral-800 hover:bg-transparent">
+                <TableHead className="text-neutral-400">Username</TableHead>
+                <TableHead className="text-neutral-400 w-32">Role</TableHead>
+                <TableHead className="text-neutral-400 w-32">Joined At</TableHead>
+                <TableHead className="text-neutral-400 text-right w-24">Actions</TableHead>
               </TableRow>
-            ) : (
-              users.map((user) => (
-                <TableRow key={user._id} className="border-neutral-800 hover:bg-neutral-900/50">
-                  <TableCell className="font-medium text-neutral-200">
-                    {user.username} {user._id === currentUserId && <span className="text-xs text-neutral-500 ml-2">(You)</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} 
-                      className={user.role === 'admin' ? 'bg-blue-900/30 text-blue-400 border border-blue-800' : 'bg-neutral-800 text-neutral-400 border border-neutral-700'}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-neutral-400 text-sm">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-red-400 hover:text-red-300 hover:bg-red-950/30" 
-                      onClick={() => handleDelete(user._id)}
-                      disabled={user._id === currentUserId}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-neutral-800 hover:bg-neutral-900/50">
+                    <TableCell><Skeleton className="h-4 w-32 bg-neutral-800" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20 bg-neutral-800" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24 bg-neutral-800" /></TableCell>
+                    <TableCell align="right"><Skeleton className="h-8 w-8 bg-neutral-800 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : users.length === 0 ? (
+                <TableRow className="border-neutral-800 focus:bg-transparent hover:bg-transparent">
+                  <TableCell colSpan={4} className="h-32 text-center text-neutral-500">
+                    No users found in database.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                users.map((user) => (
+                  <TableRow key={user._id} className="border-neutral-800 hover:bg-neutral-900/50">
+                    <TableCell className="font-medium text-neutral-200">
+                      {user.username} {user._id === currentUserId && <span className="text-xs text-neutral-500 ml-2">(You)</span>}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} 
+                        className={user.role === 'admin' ? 'bg-blue-900/30 text-blue-400 border border-blue-800' : 'bg-neutral-800 text-neutral-400 border border-neutral-700'}>
+                        {user.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-neutral-400 text-sm">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-red-400 hover:text-red-300 hover:bg-red-950/30" 
+                        onClick={() => handleDelete(user._id)}
+                        disabled={user._id === currentUserId}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

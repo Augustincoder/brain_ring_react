@@ -28,7 +28,7 @@ export default function AdminPage() {
 
   if (role !== 'admin') {
     return (
-      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4">
+      <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-4">
         <Card className="w-full max-w-md border-red-900/50 bg-neutral-900 text-red-500 shadow-2xl">
           <CardHeader className="text-center pb-2">
             <div className="mx-auto w-16 h-16 bg-red-950/50 rounded-full flex items-center justify-center mb-4 border border-red-900">
@@ -53,7 +53,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 md:p-8">
+    <div className="min-h-[100dvh] bg-neutral-950 text-neutral-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">

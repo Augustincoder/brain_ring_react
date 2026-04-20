@@ -85,7 +85,7 @@ export function RoomInvite({
         <Button
           variant="outline"
           onClick={handleCopyLink}
-          className="flex-1 h-11 rounded-xl gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary font-bold shadow-sm"
+          className="flex-1 h-11 min-h-[44px] rounded-xl gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary font-bold shadow-sm"
         >
           {copied ? (
             <>
@@ -157,14 +157,14 @@ export function RoomInvite({
             onChange={(e) => setManualCode(e.target.value.toUpperCase())}
             placeholder="ABCDEF"
             maxLength={6}
-            className="flex-1 h-11 text-center font-mono text-lg tracking-[0.3em] bg-card/50 border-border/50 rounded-xl uppercase"
+            className="flex-1 h-11 min-h-[44px] text-[16px] text-center font-mono tracking-[0.3em] bg-card/50 border-border/50 rounded-xl uppercase"
             autoComplete="off"
           />
           <Button
             type="submit"
             disabled={manualCode.length < 6}
             size="icon"
-            className="h-11 w-11 rounded-xl shrink-0"
+            className="h-11 w-11 min-h-[44px] rounded-xl shrink-0"
           >
             <UserPlus className="h-4 w-4" />
           </Button>

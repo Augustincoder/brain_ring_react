@@ -76,8 +76,10 @@ export default function ResultsPage() {
   }, [isWinner, showConfetti, haptic])
 
   const handlePlayAgain = () => {
-    resetGame()
     router.push('/lobby')
+    setTimeout(() => {
+      resetGame()
+    }, 400)
   }
 
   const handleOverride = async (questionId: string, participantUserId: string) => {

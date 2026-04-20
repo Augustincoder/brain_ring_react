@@ -91,7 +91,7 @@ export function AnswerInput({
           onChange={(e) => setAnswer(e.target.value)}
           placeholder="Javobingizni yozing..."
           disabled={disabled}
-          className="flex-1 h-12 text-lg bg-card/50 border-border/50"
+          className="flex-1 h-12 min-h-[44px] text-[16px] bg-card/50 border-border/50"
           autoComplete="off"
           autoCapitalize="off"
           autoCorrect="off"
@@ -100,7 +100,7 @@ export function AnswerInput({
           type="submit"
           disabled={!answer.trim() || disabled}
           size="icon"
-          className="h-12 w-12 rounded-xl"
+          className="h-12 w-12 min-h-[44px] rounded-xl"
         >
           <Send className="h-5 w-5" />
         </Button>
