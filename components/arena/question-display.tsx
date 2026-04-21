@@ -12,6 +12,14 @@ interface QuestionDisplayProps {
   compact?: boolean
 }
 
+export function QuestionDisplay({
+  question,
+  questionNumber,
+  totalQuestions,
+  className,
+  compact,
+}: QuestionDisplayProps) {
+
   const textLength = question.text.length
   
   // Dynamic font sizing based on length
