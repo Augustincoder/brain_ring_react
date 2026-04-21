@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBuzzer } from '@/hooks/use-buzzer'
 
@@ -11,109 +12,68 @@ interface BuzzerButtonProps {
 }
 
 export function BuzzerButton({ className, disabled }: BuzzerButtonProps) {
-  const { canPress, isWinner, pressBuzzer } = useBuzzer()
-  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number }>>([])
-
-  const handlePress = useCallback((e: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-    if (disabled || !canPress) return
-
-    // Get click position for ripple
-    const button = e.currentTarget
-    const rect = button.getBoundingClientRect()
-    let x, y
-    
-    if ('touches' in e) {
-      x = e.touches[0].clientX - rect.left
-      y = e.touches[0].clientY - rect.top
-    } else {
-      x = e.clientX - rect.left
-      y = e.clientY - rect.top
-    }
-
-    // Add ripple
-    const rippleId = Date.now()
-    setRipples((prev) => [...prev, { id: rippleId, x, y }])
-
-    // Remove ripple after animation
-    setTimeout(() => {
-      setRipples((prev) => prev.filter((r) => r.id !== rippleId))
-    }, 600)
-
-    pressBuzzer()
-  }, [disabled, canPress, pressBuzzer])
-
+  const { canPress, pressBuzzer } = useBuzzer()
+  
   const isDisabled = disabled || !canPress
 
+  const handleBuzz = (e: React.MouseEvent | React.TouchEvent) => {
+    if (isDisabled) return
+    pressBuzzer()
+  }
+
   return (
-    <motion.button
-      onClick={handlePress}
-      onTouchStart={handlePress}
-      disabled={isDisabled}
-      animate={
-        !isDisabled && !isWinner
-          ? { scale: [1, 1.02, 1] }
-          : {}
-      }
-      transition={{
-        duration: 2,
-        repeat: Infinity,
-        ease: 'easeInOut',
-      }}
-      className={cn(
-        'relative overflow-hidden',
-        'w-[120px] h-[120px] rounded-full',
-        'flex items-center justify-center',
-        'transition-all duration-200',
-        'touch-manipulation',
-        isWinner
-          ? 'bg-emerald-500/90 border-2 border-emerald-400/50 shadow-lg shadow-emerald-500/30'
-          : isDisabled
-          ? 'bg-muted/50 border-2 border-border/30'
-          : 'bg-primary/90 border-2 border-primary/20 shadow-lg shadow-primary/20',
-        'active:scale-[0.95]',
-        className
-      )}
-    >
-      {/* Ripple effects */}
+    <div className={cn("relative group/buzzer pointer-events-auto h-52 w-52 flex items-center justify-center", className)}>
+      {/* Dynamic Glow Aura */}
       <AnimatePresence>
-        {ripples.map((ripple) => (
-          <motion.span
-            key={ripple.id}
-            initial={{ scale: 0, opacity: 0.5 }}
-            animate={{ scale: 4, opacity: 0 }}
+        {!isDisabled && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1.2 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="absolute w-10 h-10 rounded-full bg-white/30 pointer-events-none"
-            style={{
-              left: ripple.x - 20,
-              top: ripple.y - 20,
-            }}
+            className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full animate-pulse"
           />
-        ))}
+        )}
       </AnimatePresence>
 
-      {/* Button content */}
-      <span
+      <motion.button
+        whileHover={!isDisabled ? { scale: 1.05 } : {}}
+        whileTap={!isDisabled ? { scale: 0.9, y: 10 } : {}}
+        disabled={isDisabled}
+        onClick={handleBuzz}
         className={cn(
-          'relative z-10 text-lg font-bold uppercase tracking-wider',
-          isWinner
-            ? 'text-white'
-            : isDisabled
-            ? 'text-muted-foreground'
-            : 'text-primary-foreground'
+          "relative h-44 w-44 rounded-full transition-all duration-300 select-none outline-none",
+          "border-[8px] flex items-center justify-center overflow-hidden",
+          isDisabled 
+            ? "bg-neutral-900 border-neutral-800 cursor-not-allowed opacity-50 grayscale" 
+            : "bg-primary border-primary/40 shadow-[0_25px_50px_-12px_rgba(var(--primary),0.5)] cursor-pointer"
         )}
       >
-        {isWinner ? 'Siz!' : 'Buzzer'}
-      </span>
+        {/* Inner shadow/depth effect */}
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
 
-      {/* Glow effect */}
-      {!isDisabled && !isWinner && (
-        <motion.div
-          className="absolute inset-0 -z-10 rounded-full bg-primary/30 blur-xl"
-          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        <div className="flex flex-col items-center justify-center gap-1">
+          <Zap className={cn(
+            "h-14 w-14 transition-transform duration-300",
+            !isDisabled && "group-hover/buzzer:scale-110 group-hover/buzzer:rotate-12",
+            isDisabled ? "text-neutral-700" : "text-neutral-950"
+          )} />
+          <span className={cn(
+            "text-[10px] font-black uppercase tracking-[0.3em] font-sans",
+            isDisabled ? "text-neutral-800" : "text-neutral-950/70"
+          )}>
+            BUZZ
+          </span>
+        </div>
+
+        {/* Glossy overlay */}
+        <div className="absolute inset-0 ring-inset ring-1 ring-white/10 rounded-full" />
+      </motion.button>
+      
+      {/* Bottom shadow for floating effect */}
+      {!isDisabled && (
+        <div className="absolute -bottom-8 w-32 h-4 bg-primary/20 blur-xl rounded-full" />
       )}
-    </motion.button>
+    </div>
   )
 }

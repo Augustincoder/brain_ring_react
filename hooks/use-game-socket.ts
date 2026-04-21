@@ -31,7 +31,7 @@ export function useGameSocket() {
   const {
     setRoom, setPlayers, setPhase, setQuestion,
     pressBuzzer, setAnswerResult, setQuestionReveal,
-    openBuzzer, setGameEnd, setHostId, setSyncing
+    openBuzzer, setGameEnd, setHostId, setSyncing, setPoolExhausted
   } = useGameStore()
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -87,6 +87,8 @@ export function useGameSocket() {
     const handleAnswerResult = (payload: AnswerResultPayload) => {
       setAnswerResult(payload.userId, payload.isCorrect, payload.correctAnswer, payload.chancesLeft, payload.givenAnswer)
       if (payload.players) setPlayers(payload.players)
+      // Safety: clear syncing if we received a result
+      useGameStore.setState({ isSyncing: false })
     }
 
     const handleQuestionTimeout = (payload: QuestionTimeoutPayload) => {
@@ -106,18 +108,37 @@ export function useGameSocket() {
       router.push('/results')
     }
 
+    const handleResetSuccess = () => {
+      setPoolExhausted(false)
+      // Small delay to ensure state is settled before auto-restarting
+      setTimeout(() => {
+        socketRef.current?.startGame()
+      }, 500)
+    }
+
     const handleError = (payload: ErrorPayload) => {
       console.error('[Socket Error]', payload.message)
+
+      // ALWAYS clear syncing state if an error occurs to unblock the UI
+      setSyncing(false)
+
+      if (payload.message === 'POOL_EXHAUSTED') {
+        setPoolExhausted(true)
+        return
+      }
+
+      if (payload.message === 'DB_EMPTY') {
+        console.warn('Ma\'lumotlar bazasi bo\'sh.')
+        return
+      }
       
       // If room is missing or game started, send them back to safety
       if (payload.message.includes('Room not found') || payload.message.includes('already started')) {
+        // Clear dead room code from state to prevent persistent re-join attempts
+        useGameStore.getState().reset()
         router.push('/lobby')
       }
 
-      // If syncing and we get an error, clear the syncing state so the UI unblocks
-      if (useGameStore.getState().isSyncing) {
-        setSyncing(false)
-      }
       toast({
         title: 'Xatolik',
         description: payload.message,
@@ -137,6 +158,7 @@ export function useGameSocket() {
     socket.on('question_reveal', handleQuestionReveal)
     socket.on('buzzer_open', handleBuzzerOpen)
     socket.on('match_results', handleMatchResults)
+    socket.on('reset_played_questions_success', handleResetSuccess)
     socket.on('error', handleError)
 
     return () => {
@@ -152,12 +174,13 @@ export function useGameSocket() {
       socket.off('question_reveal', handleQuestionReveal)
       socket.off('buzzer_open', handleBuzzerOpen)
       socket.off('match_results', handleMatchResults)
+      socket.off('reset_played_questions_success', handleResetSuccess)
       socket.off('error', handleError)
     }
   }, [
     setRoom, setPlayers, setPhase, setQuestion, pressBuzzer,
     setAnswerResult, setQuestionReveal, openBuzzer, setGameEnd,
-    setHostId, setSyncing, router, toast,
+    setHostId, setSyncing, setPoolExhausted, router, toast,
   ])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -275,6 +298,10 @@ export function useGameSocket() {
     getGameSocket().forceQuitGame()
   }, [])
 
+  const resetPlayedQuestions = useCallback(() => {
+    getGameSocket().resetPlayedQuestions()
+  }, [])
+
   return {
     connect,
     disconnect,
@@ -284,5 +311,6 @@ export function useGameSocket() {
     buzzIn,
     submitAnswer,
     forceQuitGame,
+    resetPlayedQuestions,
   }
 }

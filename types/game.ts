@@ -5,13 +5,25 @@ export type GamePhase = 'matchmaking' | 'waiting' | 'reading' | 'buzzing' | 'ans
 export interface Question {
   id: string
   text: string
+  questionText?: string // For compatibility with backend naming
   category: string
   difficulty: 'easy' | 'medium' | 'hard'
   correctAnswer: string
   options?: string[]
-  timeLimit: number // in seconds
-  points: number
+  timeLimit?: number // in seconds
+  points?: number
   explanation?: string
+}
+
+export interface AdminQuestion {
+  _id: string
+  questionText: string
+  correctAnswer: string
+  explanation?: string
+  category?: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface ParticipantScore {

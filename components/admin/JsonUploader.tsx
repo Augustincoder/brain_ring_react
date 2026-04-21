@@ -105,23 +105,30 @@ export function JsonUploader({ mode, schema, onSuccess }: JsonUploaderProps) {
   if (previewData) {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="flex items-center justify-between bg-neutral-900 border border-neutral-800 p-4 rounded-xl shadow-lg">
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-500/10 p-2 rounded-lg">
-              <Info className="h-5 w-5 text-blue-400" />
+        <div className="flex items-center justify-between bg-neutral-900 border border-neutral-800 p-3 rounded-xl shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/20 p-2 rounded-lg">
+              <UploadCloud className="h-4 w-4 text-primary" />
             </div>
-            <div>
-              <h3 className="text-white font-bold">Import Preview</h3>
-              <p className="text-xs text-neutral-400">{previewData.length} questions detected and validated.</p>
-            </div>
+            <span className="text-xs font-black text-white uppercase tracking-widest">{previewData.length}</span>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={clearPreview} disabled={isUploading} className="text-neutral-400 hover:text-white">
-              <X className="h-4 w-4 mr-2" /> Cancel
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={clearPreview} 
+              disabled={isUploading} 
+              className="h-9 w-9 text-neutral-500 hover:text-white hover:bg-neutral-800/50 rounded-lg"
+            >
+              <X className="h-4 w-4" />
             </Button>
-            <Button size="sm" onClick={handleUpload} disabled={isUploading} className="bg-white text-black hover:bg-neutral-200">
-              {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-              {isUploading ? 'Saving...' : 'Confirm & Save'}
+            <Button 
+              size="icon" 
+              onClick={handleUpload} 
+              disabled={isUploading} 
+              className="h-9 w-9 bg-primary text-neutral-950 hover:bg-primary/90 rounded-lg shadow-lg shadow-primary/20"
+            >
+              {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             </Button>
           </div>
         </div>
@@ -130,30 +137,18 @@ export function JsonUploader({ mode, schema, onSuccess }: JsonUploaderProps) {
           <Table>
             <TableHeader className="bg-neutral-900 sticky top-0 z-10">
               <TableRow className="border-neutral-800">
-                <TableHead className="text-neutral-400">Question</TableHead>
-                <TableHead className="text-neutral-400">Answer</TableHead>
-                <TableHead className="text-neutral-400 w-24">Category</TableHead>
-                <TableHead className="text-neutral-400 text-center w-24">Difficulty</TableHead>
+                <TableHead className="text-neutral-500 text-[10px] font-black uppercase tracking-wider pl-4">Savol</TableHead>
+                <TableHead className="text-neutral-500 text-[10px] font-black uppercase tracking-wider">Javob</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {previewData.map((q, i) => (
                 <TableRow key={i} className="border-neutral-800 hover:bg-neutral-900/30 transition-colors">
-                  <TableCell className="text-neutral-200 font-medium max-w-xs truncate" title={q.questionText}>
+                  <TableCell className="text-neutral-200 text-sm py-3 pl-4 max-w-xs truncate" title={q.questionText}>
                     {q.questionText}
                   </TableCell>
-                  <TableCell className="text-neutral-400 max-w-[200px] truncate" title={q.correctAnswer}>
+                  <TableCell className="text-neutral-500 text-sm py-3 max-w-[200px] truncate" title={q.correctAnswer}>
                     {q.correctAnswer}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-wider border-neutral-800 bg-neutral-900/50">
-                      {q.category || 'General'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="secondary" className="capitalize text-[10px] bg-neutral-800 text-neutral-400">
-                      {q.difficulty || 'medium'}
-                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}
@@ -183,16 +178,9 @@ export function JsonUploader({ mode, schema, onSuccess }: JsonUploaderProps) {
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
         
-        <div className="rounded-2xl bg-neutral-900 py-4 px-4 mb-6 border border-neutral-800 text-neutral-400 shadow-inner group-hover:text-white transition-colors">
-          <UploadCloud className="h-8 w-8" />
+        <div className="rounded-xl bg-neutral-900 py-3 px-3 border border-neutral-800 text-neutral-500 group-hover:text-primary transition-colors">
+          <UploadCloud className="h-6 w-6" />
         </div>
-        
-        <h3 className="text-xl font-bold text-white mb-2">
-          Import Questions
-        </h3>
-        <p className="text-sm text-neutral-400 max-w-xs mx-auto leading-relaxed">
-          Drag and drop your JSON file here, or click to browse. We'll show you a preview before saving.
-        </p>
       </div>
 
       {errors.length > 0 && (

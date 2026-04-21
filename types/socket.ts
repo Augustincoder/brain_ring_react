@@ -16,6 +16,7 @@ export type SocketEventType =
   | 'buzzer_open'
   | 'match_results'
   | 'host_changed'
+  | 'reset_played_questions_success'
   | 'error'
 
 export interface SocketEvent {

@@ -37,17 +37,19 @@ export function JoinRoomInput({ onJoin, isLoading, className }: JoinRoomInputPro
       transition={{ delay: 0.25, duration: 0.4 }}
       className={cn(
         "relative overflow-hidden",
-        "bg-card/40 backdrop-blur-xl rounded-2xl p-4 md:p-6",
-        "border border-border/30 shadow-xl",
+        "bg-white/[0.02] backdrop-blur-2xl rounded-3xl p-4 md:p-5",
+        "border border-white/5 shadow-2xl",
         className
       )}
     >
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 px-1">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-            <Hash className="h-4 w-4 text-primary" />
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-1.5 h-4 bg-primary rounded-full" />
+            <h3 className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] font-sans">
+              Enter Room Code
+            </h3>
           </div>
-          <h3 className="text-base font-bold text-foreground">Xonaga qo&apos;shilish</h3>
         </div>
         
         <form onSubmit={handleJoinByCode} className="flex gap-2">
@@ -60,10 +62,10 @@ export function JoinRoomInput({ onJoin, isLoading, className }: JoinRoomInputPro
               pattern="[0-9]*"
               maxLength={4}
               className={cn(
-                "w-full h-12 text-2xl text-center font-mono font-bold tracking-[0.2em]",
-                "bg-background/40 border-border/20 rounded-xl",
-                "focus:ring-2 focus:ring-primary/20 focus:border-primary",
-                "placeholder:text-muted-foreground/20 shadow-inner px-2"
+                "w-full h-14 text-3xl text-center font-black tracking-[0.4em] font-sans text-white",
+                "bg-black/20 border-white/5 rounded-2xl",
+                "focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
+                "placeholder:text-white/5 shadow-inner px-2 transition-all"
               )}
               autoComplete="off"
             />
@@ -72,17 +74,16 @@ export function JoinRoomInput({ onJoin, isLoading, className }: JoinRoomInputPro
             type="submit"
             disabled={manualCode.length !== 4 || isLoading}
             className={cn(
-              "h-12 px-6 rounded-xl font-bold text-sm",
-              "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md",
-              "transition-all active:scale-95 shrink-0"
+              "h-14 w-14 rounded-2xl p-0",
+              "bg-primary hover:bg-primary/90 text-neutral-950 shadow-lg",
+              "transition-all active:scale-90 shrink-0"
             )}
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
-              <UserPlus className="h-5 w-5 mr-1.5" />
+              <UserPlus className="h-6 w-6" />
             )}
-            Kirish
           </Button>
         </form>
       </div>

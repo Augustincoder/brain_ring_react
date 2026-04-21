@@ -1,9 +1,10 @@
 'use client'
 
 import React from 'react'
-import { ChevronLeft, Brain, Trophy } from 'lucide-react'
+import { X, Trophy, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface ArenaHeaderProps {
   onBack: () => void
@@ -21,52 +22,42 @@ export function ArenaHeader({
   className 
 }: ArenaHeaderProps) {
   return (
-    <header className={cn(
-      "w-full bg-background/80 backdrop-blur-md border-b border-border/30 z-50",
-      "p-4 pt-6 md:pt-4",
-      className
-    )}>
-      <div className="max-w-2xl mx-auto flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className={cn(
-            "flex items-center gap-2 group transition-all",
-            "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <div className="w-10 h-10 rounded-xl bg-card border border-border/40 flex items-center justify-center group-active:scale-90 transition-transform">
-            <ChevronLeft className="h-6 w-6" />
-          </div>
-          <span className="hidden sm:inline font-bold text-sm">Chiqish</span>
-        </button>
-
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2 mb-0.5">
-            <Brain className="h-4 w-4 text-primary" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+    <header className={cn("w-full fixed top-0 left-0 z-50", className)}>
+      <div className="z-20 flex items-center justify-between px-6 py-4 bg-neutral-950/40 backdrop-blur-xl border-b border-white/5">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-10 w-10 shrink-0 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/5" 
+            onClick={onBack}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.3em] font-sans">
+              Arena
+            </span>
+            <h1 className="text-sm font-black text-white uppercase tracking-widest font-sans">
               {modeName}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-black text-foreground">
-              Savol {currentQuestion}
-            </span>
-            <span className="text-sm font-bold text-muted-foreground/40">/</span>
-            <span className="text-sm font-bold text-muted-foreground/40">
-              {totalQuestions}
-            </span>
+            </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <Trophy className="h-5 w-5 text-primary" />
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.3em] font-sans">
+              Question
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-black text-primary font-sans leading-none">{currentQuestion}</span>
+              <span className="text-[10px] font-bold text-neutral-500 uppercase font-sans">/ {totalQuestions}</span>
+            </div>
           </div>
         </div>
       </div>
       
       {/* Progress Line */}
-      <div className="absolute bottom-0 left-0 h-[2px] bg-border/20 w-full">
+      <div className="absolute bottom-0 left-0 h-[1.5px] bg-white/5 w-full overflow-hidden">
         <motion.div 
           className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]"
           initial={{ width: 0 }}

@@ -55,6 +55,9 @@ interface GameState {
   // Reconnect sync guard — true while waiting for server to re-deliver state after refresh
   isSyncing: boolean
 
+  // Solo mode pool exhaustion state
+  isPoolExhausted: boolean
+
   // Computed
   isHost: (userId: string | null) => boolean
 
@@ -71,6 +74,7 @@ interface GameState {
   openBuzzer: (chancesLeft: number, answerEndTime: number) => void
   setGameEnd: (result: MatchResult) => void
   setSyncing: (val: boolean) => void
+  setPoolExhausted: (val: boolean) => void
   reset: () => void
 }
 
@@ -96,6 +100,7 @@ const initialState = {
   matchResult: null,
   answeredPlayers: [],
   isSyncing: false,
+  isPoolExhausted: false,
 }
 
 export const useGameStore = create<GameState>()(persist(
@@ -144,6 +149,7 @@ export const useGameStore = create<GameState>()(persist(
       answerEndTime,
       answerTimeMs: Math.max(0, answerEndTime - Date.now()),
       phase: 'answering',
+      isSyncing: false,
     }),
 
     setAnswerResult: (userId, isCorrect, correctAnswer, chancesLeft, givenAnswer) => set((state) => ({
@@ -168,6 +174,7 @@ export const useGameStore = create<GameState>()(persist(
       phase: 'buzzing',
       buzzerWinner: null,
       buzzerUsername: null,
+      isSyncing: false,
     }),
 
     setGameEnd: (result) => set({
@@ -176,6 +183,8 @@ export const useGameStore = create<GameState>()(persist(
     }),
 
     setSyncing: (val) => set({ isSyncing: val }),
+
+    setPoolExhausted: (val) => set({ isPoolExhausted: val }),
 
     reset: () => set(initialState),
   }),

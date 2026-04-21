@@ -24,49 +24,49 @@ export function ModeGrid({ onSelectMode }: ModeGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-2 p-4">
+    <div className="grid grid-cols-2 gap-3 px-6 py-4">
       {BRAIN_RING_SUB_MODES.map((mode, index) => {
         const Icon = iconMap[mode.icon as keyof typeof iconMap] || Brain
 
         return (
           <motion.button
             key={mode.id}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.06, duration: 0.3 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.1, duration: 0.4 }}
             onClick={() => handleSelect(mode.id)}
             className={cn(
-              'group relative flex flex-row items-center gap-3',
-              'rounded-xl p-3 text-left',
-              'bg-card/50 backdrop-blur-sm',
-              'border border-border/30',
-              'transition-all duration-200',
-              'hover:bg-card/70 hover:border-border/50',
-              'active:scale-[0.99]'
+              'group relative flex flex-col items-center justify-center gap-3',
+              'aspect-square rounded-[2rem] p-6 text-center',
+              'bg-white/[0.02] backdrop-blur-2xl',
+              'border border-white/5 shadow-2xl',
+              'transition-all duration-300',
+              'hover:bg-white/[0.05] hover:border-white/10 hover:scale-[1.02]',
+              'active:scale-[0.98]'
             )}
           >
+            {/* Gradient Glow */}
+            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 blur-2xl transition-opacity rounded-[2rem]" />
+
             <div
               className={cn(
-                'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg',
-                'bg-primary/10 text-primary',
-                'transition-transform duration-200',
-                'group-hover:scale-105'
+                'flex h-14 w-14 items-center justify-center rounded-2xl',
+                'bg-primary/10 text-primary shadow-inner',
+                'transition-transform duration-300',
+                'group-hover:scale-110 group-hover:rotate-3'
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-7 w-7" />
             </div>
 
-            <div className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-foreground leading-tight">
+            <div className="relative z-10">
+              <span className="block text-sm font-black text-white uppercase tracking-widest leading-tight">
                 {mode.nameUz}
               </span>
-              <span className="mt-0.5 block text-[11px] text-muted-foreground leading-snug line-clamp-1">
-                {mode.descriptionUz}
-              </span>
             </div>
-
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted/40 text-muted-foreground/50">
-              <Brain className="h-3 w-3" />
+            
+            <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-30 transition-opacity">
+               <Brain className="h-4 w-4 text-white" />
             </div>
           </motion.button>
         )

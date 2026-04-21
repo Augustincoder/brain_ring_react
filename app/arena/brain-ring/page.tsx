@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { AppShell } from '@/components/layout/app-shell'
 import { TgSafeArea } from '@/components/layout/tg-safe-area'
 import { QuestionDisplay } from '@/components/arena/question-display'
@@ -14,6 +14,7 @@ import { useTelegram } from '@/hooks/use-telegram'
 import { useGameSocket } from '@/hooks/use-game-socket'
 import { useGameStore } from '@/store/game-store'
 import { useUserStore } from '@/store/user-store'
+import { cn } from '@/lib/utils'
 
 const AnswerInput = dynamic(
   () => import('@/components/arena/answer-input').then((m) => ({ default: m.AnswerInput })),
@@ -32,6 +33,8 @@ const MatchExitModal = dynamic(
   { ssr: false }
 )
 
+import { PoolExhaustedModal } from '@/components/arena/pool-exhausted-modal'
+
 export default function BrainRingPage() {
   const router = useRouter()
   const { haptic } = useTelegram()
@@ -49,20 +52,17 @@ export default function BrainRingPage() {
   const totalQuestions  = useGameStore((state) => state.totalQuestions)
   const isSyncing       = useGameStore((state) => state.isSyncing)
 
-  const buzzerWinner  = useGameStore((state) => state.buzzerWinner)
-  const isMyBuzzer    = buzzerWinner === userId
-  const chancesLeft   = useGameStore((state) => state.chancesLeft)
+  const buzzerWinner    = useGameStore((state) => state.buzzerWinner)
+  const buzzerUsername  = useGameStore((state) => state.buzzerUsername)
+  const isMyBuzzer      = buzzerWinner === userId
+  const chancesLeft     = useGameStore((state) => state.chancesLeft)
 
-  // ── PILLAR 3 groundwork: read absolute epoch timestamps ──────────────────
   const readingEndTime = useGameStore((state) => state.readingEndTime)
   const answerEndTime  = useGameStore((state) => state.answerEndTime)
 
   const lastAnswerResult    = useGameStore((state) => state.lastAnswerResult)
   const questionExplanation = useGameStore((state) => state.questionExplanation)
 
-  // ── Server-authoritative visual timer ────────────────────────────────────
-  // We only render time — we NEVER emit anything when it hits zero.
-  // The server drives all phase transitions.
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [totalTime, setTotalTime] = useState(15)
   const rafRef = useRef<number | null>(null)
@@ -73,14 +73,12 @@ export default function BrainRingPage() {
       return
     }
 
-    // Pick the relevant endTime for the current phase
     const endTime =
       phase === 'reading'   ? readingEndTime :
       phase === 'answering' ? answerEndTime  :
       phase === 'buzzing'   ? answerEndTime  :
       null
 
-    // Cancel any running animation loop
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current)
       rafRef.current = null
@@ -91,14 +89,12 @@ export default function BrainRingPage() {
       return
     }
 
-    // Snapshot the total duration for the progress bar
     const nowMs = Date.now()
     const remainingMs = Math.max(0, endTime - nowMs)
     const totalMs = phase === 'reading' ? 15_000 : 7_000
     setTotalTime(Math.round(totalMs / 1000))
     setTimeRemaining(Math.round(remainingMs / 1000))
 
-    // requestAnimationFrame loop — updates every ~100ms, purely visual
     let lastTick = -1
     const tick = () => {
       const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000))
@@ -109,7 +105,6 @@ export default function BrainRingPage() {
       if (left > 0) {
         rafRef.current = requestAnimationFrame(tick)
       } else {
-        // Time is up visually — UI passively shows "00" and waits for server.
         rafRef.current = null
       }
     }
@@ -121,11 +116,8 @@ export default function BrainRingPage() {
         rafRef.current = null
       }
     }
-  }, [phase, readingEndTime, answerEndTime])
+  }, [phase, readingEndTime, answerEndTime, isAuthenticated, router])
 
-  // ── PILLAR 2 groundwork: plain emit, no optimistic store write ───────────
-  // The server is the authority. useBuzzer hook (Pillar 2) will add
-  // optimistic lock + throttle on top of this.
   const handleAnswerSubmit = useCallback((answer: string) => {
     haptic('medium')
     submitAnswer(answer)
@@ -137,9 +129,6 @@ export default function BrainRingPage() {
     router.push('/lobby')
   }, [haptic, forceQuitGame, router])
 
-  // ── PILLAR 1: Full-screen syncing guard ──────────────────────────────────
-  // Shown on refresh while waiting for server to re-deliver game state.
-  // NEVER shown during normal navigation (isSyncing starts as false).
   if (isSyncing) {
     return (
       <AppShell className="items-center justify-center">
@@ -163,7 +152,6 @@ export default function BrainRingPage() {
     )
   }
 
-  // Normal waiting state (first load, before first question arrives)
   if (!currentQuestion) {
     return (
       <AppShell className="items-center justify-center">
@@ -178,15 +166,42 @@ export default function BrainRingPage() {
   return (
     <AppShell>
       <TgSafeArea>
-        <div className="flex flex-col h-full bg-background relative overflow-hidden">
+        <div className="flex flex-col h-full bg-[#050505] relative overflow-hidden pt-[72px]">
+          <PoolExhaustedModal />
+          <div className="absolute inset-0 pointer-events-none transition-all duration-1000">
+            <div className={cn(
+              "absolute top-[-20%] right-[-10%] w-[80%] h-[60%] blur-[120px] rounded-full transition-all duration-1000",
+              phase === 'reading' && "bg-amber-500/10",
+              phase === 'buzzing' && "bg-primary/20",
+              phase === 'answering' && "bg-red-500/20",
+              phase === 'reveal' && "bg-blue-500/10",
+              (!phase || phase === 'waiting') && "bg-white/5"
+            )} />
+            <div className={cn(
+              "absolute bottom-[-10%] left-[-20%] w-[100%] h-[50%] blur-[120px] rounded-full transition-all duration-1000",
+              phase === 'reading' && "bg-amber-500/5",
+              phase === 'buzzing' && "bg-primary/10",
+              phase === 'answering' && "bg-red-500/10",
+              phase === 'reveal' && "bg-blue-500/5",
+              (!phase || phase === 'waiting') && "bg-white/2"
+            )} />
+          </div>
+
           <ArenaHeader 
             onBack={() => setShowExitModal(true)}
             currentQuestion={questionNumber}
             totalQuestions={totalQuestions}
           />
 
-          <div className="flex-1 flex flex-col relative z-0">
-            <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 border-b border-border/10 bg-gradient-to-b from-transparent to-card/20 shadow-inner overflow-hidden">
+          <div className="relative z-20 px-8 py-3 bg-black/40 backdrop-blur-md border-b border-white/5">
+            <ProgressTimer 
+              timeRemaining={timeRemaining} 
+              totalTime={totalTime} 
+            />
+          </div>
+
+          <div className="flex-1 flex flex-col pt-8 relative z-10 w-full max-w-2xl mx-auto overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 px-4 md:px-8 pb-4 overflow-hidden">
               <QuestionDisplay
                 question={currentQuestion}
                 questionNumber={questionNumber}
@@ -195,52 +210,66 @@ export default function BrainRingPage() {
               />
             </div>
 
-            {/* Action Zone */}
-            <div className="h-[50%] lg:h-[40%] relative w-full bg-card/40">
+            <div className="h-[40%] min-h-[320px] relative w-full bg-neutral-950/60 backdrop-blur-xl border-t border-white/5 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-30">
               <AnimatePresence mode="wait">
-
-                {/* READING / BUZZING */}
                 {(phase === 'reading' || phase === 'buzzing') && (
                   <motion.div
-                    key="buzzer"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 flex flex-col items-center justify-center p-6"
+                    key="buzzer-zone"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 50 }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-auto"
                   >
-                    {phase === 'reading' ? (
-                      <p className="text-sm font-bold text-amber-500 animate-pulse mb-6 uppercase tracking-widest bg-amber-500/10 px-4 py-2 rounded-full border border-amber-500/20">
-                        Savol o'qilmoqda... Kuting
-                      </p>
-                    ) : (
-                      <p className="text-sm text-foreground/70 mb-6 font-bold tracking-widest uppercase bg-card/60 backdrop-blur px-4 py-1.5 rounded-full border border-border/50">
-                        Urinishlar: <span className="text-primary">{chancesLeft}</span>
-                      </p>
-                    )}
-                    <BuzzerButton disabled={phase === 'reading' || chancesLeft <= 0} />
+                    <div className="flex flex-col items-center gap-8">
+                      <div className="flex flex-col items-center gap-3">
+                        {phase === 'reading' ? (
+                          <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 animate-pulse">
+                            <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />
+                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] font-sans">
+                              Reading Question
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-4">
+                            <div className="px-6 py-2 rounded-full bg-primary/10 border border-primary/20">
+                              <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em] font-sans">
+                                Buzz Now
+                              </span>
+                            </div>
+                            <div className="h-4 w-[1.5px] bg-white/10" />
+                            <div className="flex items-center gap-2">
+                               <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest font-sans">Ends:</span>
+                               <span className="text-sm font-black text-white font-sans">{chancesLeft}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <BuzzerButton disabled={phase === 'reading' || chancesLeft <= 0} />
+                      </div>
+                    </div>
                   </motion.div>
                 )}
 
-                {/* ANSWERING */}
                 {phase === 'answering' && (
                   <motion.div
-                    key="answer"
-                    initial={{ opacity: 0, y: 20 }}
+                    key="answer-zone"
+                    initial={{ opacity: 0, y: 50 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="absolute inset-0 z-20 bg-background/90 backdrop-blur flex flex-col justify-end"
+                    exit={{ opacity: 0, y: 50 }}
+                    className="absolute inset-0 z-20 flex flex-col justify-end pointer-events-auto"
                   >
                     {isMyBuzzer ? (
-                      <div className="w-full h-full lg:max-w-md lg:mx-auto lg:h-auto rounded-t-3xl sm:rounded-3xl bg-card lg:border border-t border-border shadow-2xl p-6 pb-12 flex flex-col justify-center">
-                        <div className="text-center mb-8">
-                          <p className="text-xs font-black text-rose-500 uppercase tracking-widest mb-2 animate-pulse flex justify-center items-center gap-2">
-                            <span>🔴</span> Sizning navbatingiz
-                          </p>
-                          <h3 className="text-2xl font-black text-foreground drop-shadow-sm">
-                            Javobingizni kiriting
-                          </h3>
+                      <div className="w-full h-full flex flex-col p-8 pt-12">
+                        <div className="space-y-1 mb-8">
+                          <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 w-fit">
+                            <div className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                            <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.4em] font-sans">
+                              Your Turn
+                            </span>
+                          </div>
                         </div>
-                        <div>
+                        <div className="flex-1 flex flex-col justify-center max-w-2xl mx-auto w-full">
                           <AnswerInput
                             timeLimit={timeRemaining}
                             onSubmit={handleAnswerSubmit}
@@ -249,46 +278,52 @@ export default function BrainRingPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-card/80 backdrop-blur-md z-30">
-                        <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6 shadow-inner ring-4 ring-primary/5">
-                          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-neutral-950/80 backdrop-blur-2xl z-30">
+                        <div className="relative mb-8">
+                          <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center shadow-inner group">
+                             <div className="absolute inset-[-10px] rounded-full border border-white/5 animate-spin-slow" />
+                             <Loader2 className="w-10 h-10 text-neutral-500 animate-spin" />
+                          </div>
                         </div>
-                        <p className="text-2xl font-bold text-foreground mb-2">
-                          {buzzerWinner ? `${useGameStore.getState().buzzerUsername} o'ylamoqda...` : 'Raqib o\'ylamoqda...'}
-                        </p>
-                        <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
-                          Kutib turing
+                        <h2 className="text-sm font-black text-neutral-400 uppercase tracking-[0.4em] font-sans mb-2">
+                           Player Thinking
+                        </h2>
+                        <p className="text-2xl font-black text-white uppercase tracking-tight text-center">
+                          {buzzerUsername || 'Opponent'}
                         </p>
                       </div>
                     )}
                   </motion.div>
                 )}
+              </AnimatePresence>
+            </div>
+          </div>
 
-                {/* RESULTS */}
-                {phase === 'results' && lastAnswerResult && (
-                  <motion.div
-                    key="results"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-30 bg-background flex flex-col items-center justify-center"
-                  >
+          <div className="fixed inset-0 pointer-events-none z-[100]">
+            <AnimatePresence>
+              {phase === 'results' && lastAnswerResult && (
+                <motion.div
+                  key="results-zone"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/80 backdrop-blur-2xl pointer-events-auto"
+                >
+                  <div className="w-full max-w-lg">
                     {lastAnswerResult.isCorrect === false && chancesLeft > 0 ? (
-                      <div className="flex flex-col items-center justify-center text-center p-8 w-full max-w-sm">
-                        <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 border-2 border-rose-500/20">
-                          <span className="text-3xl">❌</span>
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <div className="w-24 h-24 bg-red-500/10 rounded-3xl flex items-center justify-center mb-8 border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.1)]">
+                          <X className="h-12 w-12 text-red-500" />
                         </div>
-                        <h3 className="text-xl font-black text-rose-500 mb-2">Noto'g'ri javob</h3>
-                        <div className="flex flex-col items-center text-foreground font-medium bg-card w-full py-4 rounded-2xl border border-border mt-4 shadow-sm">
-                          <p className="text-sm text-muted-foreground mb-1">
-                            {lastAnswerResult.userId === userId ? 'Sizning javobingiz:' : 'Raqib javobi:'}
-                          </p>
-                          <span className="text-xl font-black text-foreground">
-                            "{lastAnswerResult.givenAnswer || 'Javob yoq'}"
+                        <h3 className="text-2xl font-black text-red-500 uppercase tracking-tighter mb-2">Incorrect</h3>
+                        <div className="bg-white/[0.02] backdrop-blur-xl border border-white/5 rounded-2xl p-6 w-full mt-4">
+                          <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Answer given</p>
+                          <span className="text-xl font-black text-white uppercase tracking-tight">
+                            "{lastAnswerResult.givenAnswer || 'None'}"
                           </span>
                         </div>
-                        <p className="text-sm text-primary mt-8 font-bold animate-pulse">
-                          Navbat boshqalarga o'tadi...
+                        <p className="text-[10px] font-black text-primary mt-10 uppercase tracking-[0.3em] font-sans animate-pulse">
+                          Switching Players...
                         </p>
                       </div>
                     ) : (
@@ -296,7 +331,7 @@ export default function BrainRingPage() {
                         correctAnswer={lastAnswerResult.correctAnswer || ''}
                         results={[{
                           playerId: lastAnswerResult.userId,
-                          playerName: lastAnswerResult.userId === userId ? username : 'Raqib',
+                          playerName: lastAnswerResult.userId === userId ? username : (buzzerUsername || 'Raqib'),
                           answer: lastAnswerResult.givenAnswer || '',
                           isCorrect: lastAnswerResult.isCorrect,
                           pointsDelta: lastAnswerResult.isCorrect ? 1 : 0,
@@ -306,36 +341,44 @@ export default function BrainRingPage() {
                         onContinue={() => {}}
                       />
                     )}
-                  </motion.div>
-                )}
+                  </div>
+                </motion.div>
+              )}
 
-                {/* REVEAL */}
-                {phase === 'reveal' && (
-                  <motion.div
-                    key="reveal"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-30 bg-background flex flex-col p-8 items-center justify-center text-center"
-                  >
-                    <div className="w-full max-w-md bg-card border shadow-xl rounded-3xl p-8 transform transition-all hover:scale-105">
-                      <h2 className="text-sm font-bold text-primary uppercase tracking-widest mb-4">
-                        To'g'ri javob
-                      </h2>
-                      <p className="text-3xl font-black text-foreground mb-6 drop-shadow-md">
+              {phase === 'reveal' && (
+                <motion.div
+                  key="reveal-zone"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/80 backdrop-blur-2xl pointer-events-auto"
+                >
+                  <div className="relative w-full max-w-md group px-4">
+                    <div className="absolute inset-0 bg-primary/10 blur-[100px] rounded-full animate-pulse" />
+                    <div className="relative bg-white/[0.02] backdrop-blur-3xl border border-white/5 shadow-2xl rounded-[3.5rem] p-10 md:p-14 transform transition-all hover:scale-[1.02] duration-700 text-center">
+                      <div className="flex items-center justify-center gap-3 mb-8">
+                         <div className="h-px w-8 bg-primary/30" />
+                         <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.5em] font-sans">
+                           To'g'ri Javob
+                         </h2>
+                         <div className="h-px w-8 bg-primary/30" />
+                      </div>
+                      <p className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-10 drop-shadow-2xl">
                         {lastAnswerResult?.correctAnswer}
                       </p>
                       {questionExplanation && (
-                        <p className="text-sm text-muted-foreground font-medium leading-relaxed bg-muted/50 p-4 rounded-xl">
-                          {questionExplanation}
-                        </p>
+                        <div className="relative mt-2">
+                          <div className="absolute inset-0 bg-primary/5 blur-xl rounded-3xl" />
+                          <p className="relative text-[11px] text-neutral-400 font-bold leading-relaxed bg-white/[0.03] p-5 md:p-7 rounded-[2rem] border border-white/5 pointer-events-auto">
+                            {questionExplanation}
+                          </p>
+                        </div>
                       )}
                     </div>
-                  </motion.div>
-                )}
-
-              </AnimatePresence>
-            </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </TgSafeArea>

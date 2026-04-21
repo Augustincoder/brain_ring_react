@@ -102,6 +102,10 @@ export class GameSocket {
   forceQuitGame(): void {
     this.socket?.emit('force_quit_game')
   }
+
+  resetPlayedQuestions(): void {
+    this.socket?.emit('reset_played_questions')
+  }
 }
 
 export const getGameSocket = (): GameSocket => {

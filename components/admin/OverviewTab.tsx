@@ -36,15 +36,12 @@ export function OverviewTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white mb-1">Platform Overview</h2>
-        <p className="text-neutral-400">High-level metrics for the Brain Ring platform.</p>
-      </div>
+      <h2 className="text-2xl font-black tracking-tight text-white uppercase tracking-widest">Statistika</h2>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard title="Total Users" icon={<Users className="h-4 w-4 text-neutral-400" />} value={stats.users} loading={loading} />
-        <StatCard title="Total Questions" icon={<FileQuestion className="h-4 w-4 text-neutral-400" />} value={stats.questions} loading={loading} />
-        <StatCard title="Matches Played" icon={<Gamepad2 className="h-4 w-4 text-neutral-400" />} value={stats.matches} loading={loading} />
+        <StatCard title="Foydalanuvchilar" icon={<Users className="h-4 w-4 text-neutral-400" />} value={stats.users} loading={loading} />
+        <StatCard title="Savollar" icon={<FileQuestion className="h-4 w-4 text-neutral-400" />} value={stats.questions} loading={loading} />
+        <StatCard title="O'yinlar" icon={<Gamepad2 className="h-4 w-4 text-neutral-400" />} value={stats.matches} loading={loading} />
       </div>
     </div>
   );

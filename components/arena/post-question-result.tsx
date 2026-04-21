@@ -36,50 +36,68 @@ export function PostQuestionResult({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.35 }}
-      className={cn('flex flex-col gap-4 p-4', className)}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className={cn('flex flex-col gap-6 w-full max-w-md mx-auto', className)}
     >
+      {/* Premium Answer Card */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="rounded-2xl border border-emerald-500/20 bg-emerald-500/8 p-4 text-center"
+        className="relative group overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] p-8 text-center backdrop-blur-3xl shadow-2xl"
       >
-        <div className="mb-2 flex items-center justify-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-          <span className="text-sm font-medium text-emerald-600">To&apos;g&apos;ri javob</span>
+        {/* Subtle Emerald Glow Backdrop */}
+        <div className="absolute inset-0 bg-emerald-500/5 blur-3xl opacity-50" />
+        
+        <div className="relative z-10">
+          <div className="mb-4 flex items-center justify-center gap-2.5">
+            <div className="h-5 w-5 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/70 font-sans">
+              To'g'ri Javob
+            </span>
+          </div>
+          <p className="text-3xl font-black text-white uppercase tracking-tighter mix-blend-difference group-hover:scale-105 transition-transform duration-500">
+            {correctAnswer}
+          </p>
         </div>
-        <p className="text-lg font-bold text-foreground">{correctAnswer}</p>
       </motion.div>
 
-      <div className="flex flex-col gap-2">
-        <span className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Natijalar
-        </span>
+      {/* Results List */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-4 px-2 mb-1">
+          <div className="h-px flex-1 bg-white/[0.03]" />
+          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-neutral-600 font-sans">
+            Natijalar
+          </span>
+          <div className="h-px flex-1 bg-white/[0.03]" />
+        </div>
+
         {results.map((result, index) => (
           <motion.div
             key={result.playerId}
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 + index * 0.1 }}
+            transition={{ delay: 0.3 + index * 0.1 }}
             className={cn(
-              'flex items-center gap-3 rounded-xl border p-3',
+              'flex items-center gap-4 rounded-[1.5rem] border p-4 transition-all duration-300',
               result.isCurrentUser
-                ? 'border-primary/20 bg-primary/5'
-                : 'border-border/20 bg-card/50'
+                ? 'border-primary/20 bg-primary/[0.03] shadow-[0_0_30px_rgba(var(--primary),0.05)]'
+                : 'border-white/5 bg-white/[0.01]'
             )}
           >
             <div
               className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border',
                 result.isCorrect
-                  ? 'bg-emerald-500/10'
+                  ? 'bg-emerald-500/10 border-emerald-500/20'
                   : result.answer
-                    ? 'bg-rose-500/10'
-                    : 'bg-muted/30'
+                    ? 'bg-rose-500/10 border-rose-500/20'
+                    : 'bg-white/5 border-white/5'
               )}
             >
               {result.isCorrect ? (
@@ -87,90 +105,64 @@ export function PostQuestionResult({
               ) : result.answer ? (
                 <XCircle className="h-5 w-5 text-rose-500" />
               ) : (
-                <Clock className="h-5 w-5 text-muted-foreground" />
+                <Clock className="h-5 w-5 text-neutral-600" />
               )}
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    'truncate text-sm font-semibold',
-                    result.isCurrentUser ? 'text-primary' : 'text-foreground'
+                    'truncate text-sm font-bold tracking-tight font-sans',
+                    result.isCurrentUser ? 'text-primary' : 'text-neutral-200'
                   )}
                 >
                   {result.playerName}
-                  {result.isCurrentUser && (
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">(siz)</span>
-                  )}
                 </span>
+                {result.isCurrentUser && (
+                  <span className="text-[9px] font-black uppercase tracking-widest text-primary/40">(siz)</span>
+                )}
               </div>
-              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              <span className="mt-0.5 block truncate text-[10px] font-medium text-neutral-500 font-sans tracking-wide">
                 {result.answer
-                  ? `"${result.answer}"`
-                  : 'Javob bermadi'}
+                   ? `"${result.answer}"`
+                   : 'Javob bermadi'}
               </span>
             </div>
 
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.4 + index * 0.1, type: 'spring' }}
-              className="shrink-0"
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.5 + index * 0.1 }}
+              className="shrink-0 flex items-center gap-1.5"
             >
               {result.pointsDelta !== 0 && (
-                <span
+                <div
                   className={cn(
-                    'rounded-lg px-2.5 py-1 text-sm font-bold',
+                    'px-2.5 py-1 rounded-lg text-xs font-black font-sans',
                     result.pointsDelta > 0
-                      ? 'bg-emerald-500/10 text-emerald-600'
+                      ? 'bg-emerald-500/10 text-emerald-500'
                       : 'bg-rose-500/10 text-rose-500'
                   )}
                 >
                   {result.pointsDelta > 0 ? `+${result.pointsDelta}` : result.pointsDelta}
-                </span>
+                </div>
               )}
             </motion.div>
           </motion.div>
         ))}
       </div>
 
-      {canAppeal && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="flex flex-col gap-2"
-        >
-          {/* <Button
-            variant="outline"
-            onClick={() => {
-              import('@/services/game-socket').then(({ getGameSocket }) => {
-                getGameSocket().requestAIRecheck('current', currentUserResult.playerId, currentUserResult.answer!)
-              })
-              onAppeal?.(currentUserResult.playerId, currentUserResult.answer!)
-            }}
-            className="h-11 w-full gap-2 rounded-xl border-primary/30 text-primary hover:bg-primary/5"
-          >
-            <Bot className="h-4 w-4" />
-            🤖 AI bilan tekshirish
-          </Button> */}
-          <p className="px-2 text-center text-[11px] leading-relaxed text-muted-foreground/70">
-            Eslatma: Faqat imlo xatolari yoki muqobil to&apos;g&apos;ri javoblar uchun.
-            Boshqa hollarda natija o&apos;zgarmaydi.
-          </p>
-        </motion.div>
-      )}
-
+      {/* Post-result Action */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
+        className="mt-4"
       >
         <Button
           onClick={onContinue}
-          className="h-12 w-full rounded-xl text-base font-medium"
+          className="h-16 w-full rounded-[1.5rem] bg-white text-neutral-950 hover:bg-neutral-200 text-sm font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl"
         >
           Davom etish
         </Button>

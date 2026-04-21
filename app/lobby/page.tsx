@@ -10,6 +10,7 @@ import { ModeGrid } from '@/components/lobby/mode-grid'
 import { JoinRoomInput } from '@/components/lobby/join-room-input'
 import { useGameStore } from '@/store/game-store'
 import { useUserStore } from '@/store/user-store'
+import { useHydrated } from '@/hooks/use-hydrated'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import type { GameMode } from '@/types/game'
@@ -20,6 +21,8 @@ export default function LobbyPage() {
   const setMode = useGameStore((state) => state.setMode)
   const reset = useGameStore((state) => state.reset)
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
+  const username = useUserStore((state) => state.username)
+  const hydrated = useHydrated()
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -68,29 +71,48 @@ export default function LobbyPage() {
   return (
     <AppShell>
       <TgSafeArea>
-        <div className="flex h-full flex-col bg-background relative overflow-hidden">
-          {/* Decorative background element */}
-          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="flex h-full flex-col bg-[#050505] relative overflow-hidden">
+          {/* Immersive Background Glows */}
+          <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-[10%] left-[-20%] w-[100%] h-[50%] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
 
+          {/* Minimalist Top Bar */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="border-b border-border/30 bg-card/50 backdrop-blur-md relative z-10"
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="z-20 border-b border-white/5 bg-neutral-950/40 backdrop-blur-xl"
           >
             <UserProfileCard />
           </motion.div>
 
-          <div className="flex-1 relative z-10 w-full max-w-2xl mx-auto flex flex-col justify-start">
+          <div className="flex-1 relative z-10 w-full max-w-2xl mx-auto flex flex-col pt-8 space-y-4 custom-scrollbar">
+            {/* Hero Section */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="px-8 flex flex-col gap-1"
+            >
+              <h2 className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.4em] font-sans">
+                Welcome back
+              </h2>
+              <h1 className="text-4xl font-black text-white uppercase tracking-tighter mix-blend-difference">
+                {hydrated ? username : 'Guest'}
+              </h1>
+            </motion.div>
+
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.4 }}
-              className="px-4 py-2"
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className="flex-1"
             >
+              {/* High-Impact Mode Hub */}
               <ModeGrid onSelectMode={handleSelectMode} />
               
-              <div className="mt-4 px-4">
+              {/* Minimalist Room Join */}
+              <div className="px-6 pt-2 pb-10">
                 <JoinRoomInput 
                   onJoin={handleJoinByCode} 
                   isLoading={isCheckingRoom}

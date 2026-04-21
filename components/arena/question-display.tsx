@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { Zap, Trophy } from 'lucide-react'
 import type { Question } from '@/types/game'
 
 interface QuestionDisplayProps {
@@ -22,59 +23,46 @@ export function QuestionDisplay({
 
   const textLength = question.text.length
   
-  // Dynamic font sizing based on length
+  // Adjusted font sizing for maximum space
   const getFontSize = () => {
-    if (textLength > 300) return 'text-base md:text-lg'
-    if (textLength > 150) return 'text-lg md:text-xl'
-    return compact ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'
+    if (textLength > 400) return 'text-base md:text-lg leading-relaxed tracking-wide'
+    if (textLength > 250) return 'text-lg md:text-xl leading-relaxed'
+    if (textLength > 150) return 'text-xl md:text-2xl'
+    if (textLength > 80)  return 'text-2xl md:text-3xl'
+    return 'text-3xl md:text-5xl'
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
-      className={cn('flex flex-col items-center gap-3 px-4 w-full h-full max-h-full overflow-hidden', className)}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.4 }}
+      className={cn('flex flex-col items-center justify-center px-4 w-full h-full max-h-full overflow-hidden', className)}
     >
-      {/* Question counter */}
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 bg-muted/50 px-2 py-0.5 rounded">
-          Savol {questionNumber} / {totalQuestions}
-        </span>
-        <span className="px-2 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-black uppercase tracking-wider">
-          {question.category}
-        </span>
-      </div>
+      {/* Expanded Cinematic Question centerpiece */}
+      <div className="flex-1 w-full min-h-0 relative overflow-hidden group flex flex-col justify-center">
+        {/* Glow behind text */}
+        <div className="absolute inset-x-8 inset-y-12 bg-primary/5 blur-[100px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+        
+        <div className="h-full w-full overflow-y-auto custom-scrollbar px-2 flex flex-col justify-center relative z-10">
+          <motion.h2
+            key={question.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+            className={cn(
+              'font-bold text-white text-center text-balance font-sans drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]',
+              getFontSize()
+            )}
+          >
+            {question.text}
+          </motion.h2>
+        </div>
 
-      {/* Question text with scroll area */}
-      <div className="flex-1 w-full min-h-0 overflow-y-auto custom-scrollbar px-2 flex flex-col justify-center py-2">
-        <motion.h2
-          key={question.id}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className={cn(
-            'font-bold leading-relaxed text-foreground text-center text-balance transition-all duration-300',
-            getFontSize()
-          )}
-        >
-          {question.text}
-        </motion.h2>
-      </div>
-
-      {/* Difficulty badge */}
-      <div className={cn(
-        'shrink-0 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
-        question.difficulty === 'easy' && 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20',
-        question.difficulty === 'medium' && 'bg-amber-500/10 text-amber-500 border border-amber-500/20',
-        question.difficulty === 'hard' && 'bg-rose-500/10 text-rose-500 border border-rose-500/20',
-      )}>
-        {question.difficulty === 'easy' && 'Oson'}
-        {question.difficulty === 'medium' && 'O\'rta'}
-        {question.difficulty === 'hard' && 'Qiyin'}
-        <span className="mx-2 opacity-20">|</span>
-        {question.points} ball
+        {/* Scroll Masks */}
+        <div className="absolute top-0 inset-x-0 h-12 bg-gradient-to-b from-[#050505] to-transparent pointer-events-none z-20" />
+        <div className="absolute bottom-0 inset-x-0 h-12 bg-gradient-to-t from-[#050505] to-transparent pointer-events-none z-20" />
       </div>
     </motion.div>
   )

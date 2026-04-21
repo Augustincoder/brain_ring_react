@@ -97,24 +97,21 @@ export function UsersTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white mb-1">User Management</h2>
-          <p className="text-neutral-400">View and manage platform users and their roles.</p>
-        </div>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-2xl font-black tracking-tight text-white">Foydalanuvchilar</h2>
 
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-white text-black hover:bg-neutral-200">
-              <UserPlus className="mr-2 h-4 w-4" /> Add User
+            <Button size="icon" className="bg-white text-black hover:bg-neutral-200 h-10 w-10 rounded-xl">
+              <UserPlus className="h-5 w-5" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] bg-neutral-950 border-neutral-800 text-white max-h-[85dvh] overflow-y-auto">
+          <DialogContent 
+            aria-describedby={undefined}
+            className="sm:max-w-[400px] bg-neutral-950 border-neutral-800 text-white p-6"
+          >
             <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription className="text-neutral-400">
-                Add a new player or administrator alias to the platform.
-              </DialogDescription>
+              <DialogTitle className="text-lg">Yangi foydalanuvchi</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
@@ -154,10 +151,9 @@ export function UsersTab() {
               <Button 
                 onClick={handleCreateUser} 
                 disabled={isCreating}
-                className="bg-white text-black hover:bg-neutral-200 font-semibold w-full"
+                className="bg-white text-black hover:bg-neutral-200 font-bold w-full h-11 rounded-xl"
               >
-                {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isCreating ? 'Creating...' : 'Create Account'}
+                {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Saqlash'}
               </Button>
             </DialogFooter>
           </DialogContent>
