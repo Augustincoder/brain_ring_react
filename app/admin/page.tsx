@@ -53,8 +53,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-neutral-950 text-neutral-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="h-[100dvh] bg-neutral-950 text-neutral-100 flex flex-col p-4 md:p-8 overflow-hidden">
+      <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col min-h-0 space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
             Admin Dashboard

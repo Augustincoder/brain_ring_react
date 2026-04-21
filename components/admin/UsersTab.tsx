@@ -165,8 +165,8 @@ export function UsersTab() {
       </div>
 
       <div className="border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950">
-        <div className="w-full overflow-x-auto">
-          <Table>
+        <div className="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+          <Table className="min-w-[600px]">
             <TableHeader className="bg-neutral-900 border-b border-neutral-800 hover:bg-neutral-900">
               <TableRow className="border-neutral-800 hover:bg-transparent">
                 <TableHead className="text-neutral-400">Username</TableHead>

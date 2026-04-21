@@ -5,7 +5,7 @@ import { UsersTab } from "@/components/admin/UsersTab";
 
 export function AdminDashboard() {
   return (
-    <Tabs defaultValue="overview" className="w-full">
+    <Tabs defaultValue="overview" className="w-full flex-1 flex flex-col overflow-hidden min-h-0">
       <TabsList className="grid w-full grid-cols-3 max-w-md bg-neutral-900 text-neutral-400 border border-neutral-800">
         <TabsTrigger value="overview" className="data-[state=active]:bg-neutral-800 data-[state=active]:text-white">
           Overview
@@ -17,7 +17,7 @@ export function AdminDashboard() {
           Users
         </TabsTrigger>
       </TabsList>
-      <div className="mt-6 border border-neutral-800 bg-neutral-900 rounded-xl p-4 md:p-6 shadow-xl">
+      <div className="mt-6 border border-neutral-800 bg-neutral-900 rounded-xl p-4 md:p-6 shadow-xl flex-1 overflow-y-auto min-h-0">
         <TabsContent value="overview" className="mt-0 outline-none">
           <OverviewTab />
         </TabsContent>

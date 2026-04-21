@@ -23,14 +23,25 @@ const PostQuestionResult = dynamic(
   () => import('@/components/arena/post-question-result').then((m) => ({ default: m.PostQuestionResult })),
   { ssr: false }
 )
+const ArenaHeader = dynamic(
+  () => import('@/components/arena/arena-header').then((m) => ({ default: m.ArenaHeader })),
+  { ssr: false }
+)
+const MatchExitModal = dynamic(
+  () => import('@/components/arena/match-exit-modal').then((m) => ({ default: m.MatchExitModal })),
+  { ssr: false }
+)
 
 export default function BrainRingPage() {
   const router = useRouter()
   const { haptic } = useTelegram()
-  const { buzzIn, submitAnswer } = useGameSocket()
+  const { submitAnswer, forceQuitGame } = useGameSocket()
+  
+  const [showExitModal, setShowExitModal] = useState(false)
 
   const userId   = useUserStore((state) => state._id)
   const username = useUserStore((state) => state.username)
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated)
 
   const phase           = useGameStore((state) => state.phase)
   const currentQuestion = useGameStore((state) => state.currentQuestion)
@@ -57,6 +68,11 @@ export default function BrainRingPage() {
   const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
+
     // Pick the relevant endTime for the current phase
     const endTime =
       phase === 'reading'   ? readingEndTime :
@@ -110,15 +126,16 @@ export default function BrainRingPage() {
   // ── PILLAR 2 groundwork: plain emit, no optimistic store write ───────────
   // The server is the authority. useBuzzer hook (Pillar 2) will add
   // optimistic lock + throttle on top of this.
-  const handleBuzzerClick = useCallback(() => {
-    haptic('impact')
-    buzzIn()
-  }, [haptic, buzzIn])
-
   const handleAnswerSubmit = useCallback((answer: string) => {
-    haptic('impact')
+    haptic('medium')
     submitAnswer(answer)
   }, [haptic, submitAnswer])
+
+  const handleExitConfirm = useCallback(() => {
+    haptic('heavy')
+    forceQuitGame()
+    router.push('/lobby')
+  }, [haptic, forceQuitGame, router])
 
   // ── PILLAR 1: Full-screen syncing guard ──────────────────────────────────
   // Shown on refresh while waiting for server to re-deliver game state.
@@ -162,21 +179,14 @@ export default function BrainRingPage() {
     <AppShell>
       <TgSafeArea>
         <div className="flex flex-col h-full bg-background relative overflow-hidden">
-          {/* Header */}
-          <div className="p-4 border-b border-border/30 bg-background/80 backdrop-blur-md z-10 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded-md">
-                Brain Ring
-              </span>
-            </div>
-            {(phase === 'reading' || phase === 'answering' || phase === 'buzzing') && (
-              <ProgressTimer timeRemaining={timeRemaining} totalTime={totalTime} variant="bar" />
-            )}
-          </div>
+          <ArenaHeader 
+            onBack={() => setShowExitModal(true)}
+            currentQuestion={questionNumber}
+            totalQuestions={totalQuestions}
+          />
 
           <div className="flex-1 flex flex-col relative z-0">
-            {/* Question */}
-            <div className="flex-1 flex flex-col justify-center p-6 border-b border-border/10 bg-gradient-to-b from-transparent to-card/20 shadow-inner">
+            <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 border-b border-border/10 bg-gradient-to-b from-transparent to-card/20 shadow-inner overflow-hidden">
               <QuestionDisplay
                 question={currentQuestion}
                 questionNumber={questionNumber}
@@ -329,6 +339,12 @@ export default function BrainRingPage() {
           </div>
         </div>
       </TgSafeArea>
+
+      <MatchExitModal 
+        isOpen={showExitModal}
+        onClose={() => setShowExitModal(false)}
+        onConfirm={handleExitConfirm}
+      />
     </AppShell>
   )
 }

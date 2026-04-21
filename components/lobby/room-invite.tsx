@@ -13,6 +13,7 @@ interface RoomInviteProps {
   players: Array<{ id: string; name: string; isReady: boolean }>
   onJoinByCode?: (code: string) => void
   className?: string
+  hideJoinInput?: boolean
 }
 
 export function RoomInvite({
@@ -21,6 +22,7 @@ export function RoomInvite({
   players,
   onJoinByCode,
   className,
+  hideJoinInput = false,
 }: RoomInviteProps) {
   const [copied, setCopied] = useState(false)
   const [manualCode, setManualCode] = useState('')
@@ -144,32 +146,34 @@ export function RoomInvite({
       )}
 
       {/* Manual code entry */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <Hash className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Kod bilan qo&apos;shilish
-          </span>
+      {!hideJoinInput && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Hash className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Kod bilan qo&apos;shilish
+            </span>
+          </div>
+          <form onSubmit={handleJoinByCode} className="flex gap-2">
+            <Input
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+              placeholder="ABCDEF"
+              maxLength={6}
+              className="flex-1 h-11 min-h-[44px] text-[16px] text-center font-mono tracking-[0.3em] bg-card/50 border-border/50 rounded-xl uppercase"
+              autoComplete="off"
+            />
+            <Button
+              type="submit"
+              disabled={manualCode.length < 6}
+              size="icon"
+              className="h-11 w-11 min-h-[44px] rounded-xl shrink-0"
+            >
+              <UserPlus className="h-4 w-4" />
+            </Button>
+          </form>
         </div>
-        <form onSubmit={handleJoinByCode} className="flex gap-2">
-          <Input
-            value={manualCode}
-            onChange={(e) => setManualCode(e.target.value.toUpperCase())}
-            placeholder="ABCDEF"
-            maxLength={6}
-            className="flex-1 h-11 min-h-[44px] text-[16px] text-center font-mono tracking-[0.3em] bg-card/50 border-border/50 rounded-xl uppercase"
-            autoComplete="off"
-          />
-          <Button
-            type="submit"
-            disabled={manualCode.length < 6}
-            size="icon"
-            className="h-11 w-11 min-h-[44px] rounded-xl shrink-0"
-          >
-            <UserPlus className="h-4 w-4" />
-          </Button>
-        </form>
-      </div>
+      )}
     </div>
   )
 }

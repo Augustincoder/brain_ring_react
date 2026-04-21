@@ -63,8 +63,8 @@ export function QuestionsTab() {
       <JsonUploader mode="brain-ring" schema={brainRingSchema} onSuccess={fetchQuestions} />
 
       <div className="border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950">
-        <div className="w-full overflow-x-auto">
-          <Table>
+        <div className="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+          <Table className="min-w-[800px]">
             <TableHeader className="bg-neutral-900 border-b border-neutral-800 hover:bg-neutral-900">
               <TableRow className="border-neutral-800 hover:bg-transparent">
                 <TableHead className="text-neutral-400">Question</TableHead>
@@ -92,8 +92,10 @@ export function QuestionsTab() {
               ) : (
                 questions.map((q) => (
                   <TableRow key={q._id} className="border-neutral-800 hover:bg-neutral-900/50">
-                    <TableCell className="font-medium text-neutral-200 line-clamp-1 max-w-md" title={q.text}>
-                      {q.text}
+                    <TableCell className="font-medium text-neutral-200 min-w-[400px] py-4" title={q.text}>
+                      <div className="line-clamp-2 leading-relaxed">
+                        {q.text}
+                      </div>
                     </TableCell>
                     <TableCell className="text-neutral-400">{q.category || 'General'}</TableCell>
                     <TableCell className="text-center">

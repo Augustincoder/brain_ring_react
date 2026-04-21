@@ -98,6 +98,10 @@ export class GameSocket {
   submitAnswer(answer: string): void {
     this.socket?.emit('submit_answer', { answer })
   }
+
+  forceQuitGame(): void {
+    this.socket?.emit('force_quit_game')
+  }
 }
 
 export const getGameSocket = (): GameSocket => {

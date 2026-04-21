@@ -71,7 +71,7 @@ export function useGameSocket() {
     // setQuestion() clears isSyncing — this is the "sync complete" signal.
     const handleQuestionReady = (payload: QuestionReadyPayload) => {
       setQuestion(
-        { questionText: payload.questionText },
+        { text: payload.questionText },
         payload.questionIndex,
         payload.totalQuestions,
         payload.endTime,          // absolute epoch ms — replaces readingTimeMs duration
@@ -108,6 +108,12 @@ export function useGameSocket() {
 
     const handleError = (payload: ErrorPayload) => {
       console.error('[Socket Error]', payload.message)
+      
+      // If room is missing or game started, send them back to safety
+      if (payload.message.includes('Room not found') || payload.message.includes('already started')) {
+        router.push('/lobby')
+      }
+
       // If syncing and we get an error, clear the syncing state so the UI unblocks
       if (useGameStore.getState().isSyncing) {
         setSyncing(false)
@@ -187,6 +193,13 @@ export function useGameSocket() {
       // localStorage unavailable (SSR guard) — no-op
     }
 
+    // Guard: Do NOT attempt rehydration if we are already in matchmaking or lobby flow.
+    // Rehydration is only for active arena sessions that were interrupted by a refresh.
+    if (typeof window !== 'undefined' && (
+      window.location.pathname === '/matchmaking' || 
+      window.location.pathname === '/lobby'
+    )) return
+
     const roomCode = persisted?.roomCode
     const phase = persisted?.phase
 
@@ -195,6 +208,7 @@ export function useGameSocket() {
     if (!roomCode || !phase || !activePhases.includes(phase)) return
 
     // ── Fire the reconnect sequence ───────────────────────────────────────
+    console.log(`[Rejoin] Attempting to resume session for room ${roomCode} (Phase: ${phase})`)
     setSyncing(true)
 
     socket.connect()
@@ -257,6 +271,10 @@ export function useGameSocket() {
     getGameSocket().submitAnswer(answer)
   }, [])
 
+  const forceQuitGame = useCallback(() => {
+    getGameSocket().forceQuitGame()
+  }, [])
+
   return {
     connect,
     disconnect,
@@ -265,5 +283,6 @@ export function useGameSocket() {
     startGame,
     buzzIn,
     submitAnswer,
+    forceQuitGame,
   }
 }

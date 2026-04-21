@@ -143,7 +143,7 @@ export function PostQuestionResult({
           transition={{ delay: 0.6 }}
           className="flex flex-col gap-2"
         >
-          <Button
+          {/* <Button
             variant="outline"
             onClick={() => {
               import('@/services/game-socket').then(({ getGameSocket }) => {
@@ -155,7 +155,7 @@ export function PostQuestionResult({
           >
             <Bot className="h-4 w-4" />
             🤖 AI bilan tekshirish
-          </Button>
+          </Button> */}
           <p className="px-2 text-center text-[11px] leading-relaxed text-muted-foreground/70">
             Eslatma: Faqat imlo xatolari yoki muqobil to&apos;g&apos;ri javoblar uchun.
             Boshqa hollarda natija o&apos;zgarmaydi.

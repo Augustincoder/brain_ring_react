@@ -44,6 +44,7 @@ function MatchmakingContent() {
   }, [joinRoom])
 
   const mountedRef = useRef(false)
+  const hasAutoStartedRef = useRef(false)
 
   useEffect(() => {
     if (mountedRef.current) return
@@ -82,6 +83,10 @@ function MatchmakingContent() {
 
   useEffect(() => {
     if (mode === 'solo' && roomCode && Object.keys(players).length > 0 && isHost(userId)) {
+      if (hasAutoStartedRef.current) return
+      hasAutoStartedRef.current = true
+      
+      console.log('[Matchmaking] Auto-starting solo game...')
       setTimeout(() => startGame(), 1000)
     }
   }, [mode, roomCode, players, startGame, isHost, userId])
@@ -123,7 +128,13 @@ function MatchmakingContent() {
                     <h2 className="text-4xl font-black tracking-widest text-primary mb-2 select-all">{roomCode}</h2>
                     <p className="text-sm text-muted-foreground">Xos Xona Kodi</p>
                   </div>
-                  <RoomInvite roomCode={roomCode} deepLink={deepLink} players={players.map((p: any) => ({ ...p, name: p.username, id: p.userId, isReady: true }))} onJoinByCode={handleJoinByCode} />
+                  <RoomInvite 
+                    roomCode={roomCode} 
+                    deepLink={deepLink} 
+                    players={players.map((p: any) => ({ ...p, name: p.username, id: p.userId, isReady: true }))} 
+                    onJoinByCode={handleJoinByCode} 
+                    hideJoinInput={true}
+                  />
                   {isHost(userId) ? (
                     <Button onClick={handleStartGame} className="w-full mt-6 h-14 text-lg font-bold shadow-lg" size="lg">O'yinni boshlash</Button>
                   ) : (
