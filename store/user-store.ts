@@ -14,7 +14,8 @@ interface UserState {
   totalWrongAnswers: number
   averageAnswerTime: number
   currentStreak: number
-  activityCalendar: string[]
+  activityCalendar: string[],
+  createdAt: string | null,
   
   login: (username: string, password: string) => Promise<void>
   fetchProfile: () => Promise<void>
@@ -33,6 +34,7 @@ const initialState = {
   averageAnswerTime: 0,
   currentStreak: 0,
   activityCalendar: [],
+  createdAt: null,
 }
 
 export const useUserStore = create<UserState>()(
@@ -71,6 +73,7 @@ export const useUserStore = create<UserState>()(
               averageAnswerTime: u.averageAnswerTime,
               currentStreak: u.currentStreak,
               activityCalendar: u.activityCalendar,
+              createdAt: u.createdAt,
             });
           }
         } catch (error) {

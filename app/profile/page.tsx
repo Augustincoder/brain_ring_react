@@ -1,21 +1,21 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { AppShell } from '@/components/layout/app-shell'
 import { TgSafeArea } from '@/components/layout/tg-safe-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Trophy, Flag, Timer, LogOut, Zap, Check, ChevronRight } from 'lucide-react'
+import { ChevronLeft, Trophy, Flag, Timer, LogOut, Zap, Check, ChevronRight, Flame } from 'lucide-react'
 import { useUserStore } from '@/store/user-store'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Calendar } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
 
 export default function ProfilePage() {
   const router = useRouter()
   const user = useUserStore()
-
 
   useEffect(() => {
     if (!user.isAuthenticated) {
@@ -23,14 +23,50 @@ export default function ProfilePage() {
     }
   }, [user.isAuthenticated, router])
 
-  if (!user.isAuthenticated) {
-    return null
-  }
+  const getUTCDateString = (date: Date) => {
+    return new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+      .toISOString()
+      .split('T')[0];
+  };
 
-  const initials = (user.username || 'U')[0].toUpperCase();
+  const streakDates = useMemo(() => {
+    const todayStr = getUTCDateString(new Date())
+    const activity = [...(user?.activityCalendar || []), "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", todayStr]
+    const start: Date[] = [], mid: Date[] = [], end: Date[] = [], solo: Date[] = [], missed: Date[] = []
+    
+    const rangeStart = new Date(2026, 2, 1)
+    const rangeEnd = new Date(2026, 5, 0)
+    const todayL = new Date(); todayL.setHours(0,0,0,0)
+    const createdL = user?.createdAt ? new Date(user.createdAt) : new Date(); createdL.setHours(0,0,0,0)
+
+    for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+      const current = new Date(d)
+      const dStr = getUTCDateString(current)
+      const isMon = current.getDay() === 1
+      const isSun = current.getDay() === 0
+      
+      const p = activity.includes(dStr)
+      const n = activity.includes(getUTCDateString(new Date(current.getTime() + 86400000)))
+      const pr = activity.includes(getUTCDateString(new Date(current.getTime() - 86400000)))
+      
+      if (p) {
+        const hasPr = pr && !isMon
+        const hasN = n && !isSun
+        if (hasPr && hasN) mid.push(new Date(current))
+        else if (hasPr && !hasN) end.push(new Date(current))
+        else if (!hasPr && hasN) start.push(new Date(current))
+        else solo.push(new Date(current))
+      } else if (current.getTime() < todayL.getTime() && current.getTime() >= createdL.getTime()) {
+        missed.push(new Date(current))
+      }
+    }
+    return { start, mid, end, solo, missed }
+  }, [user?.activityCalendar, user?.createdAt])
+
+  if (!user.isAuthenticated) return null
 
   const statCards = [
-    { name: "To'g'ri", score: user.totalCorrectAnswers, icon: Trophy, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { name: "To'g'ri", score: user.totalCorrectAnswers, icon: Trophy, color: 'text-orange-500', bg: 'bg-orange-500/10' },
     { name: 'O\'yinlar', score: user.totalGamesPlayed, icon: Flag, color: 'text-blue-500', bg: 'bg-blue-500/10' },
     { name: "Tezlik (s)", score: user.averageAnswerTime, icon: Timer, color: 'text-amber-500', bg: 'bg-amber-500/10' },
   ]
@@ -38,43 +74,45 @@ export default function ProfilePage() {
   const calculateLongestStreak = (calendar: string[]) => {
     if (!calendar || calendar.length === 0) return 0;
     const sorted = [...new Set(calendar)].sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-    let max = 0;
-    let current = 0;
-    let lastDate: Date | null = null;
+    let max = 0, current = 0, lastDate: Date | null = null;
     for (const dateStr of sorted) {
-      const date = new Date(dateStr);
-      date.setHours(0,0,0,0);
-      if (!lastDate) {
-        current = 1;
-      } else {
+      const date = new Date(dateStr); date.setHours(0,0,0,0);
+      if (!lastDate) current = 1;
+      else {
         const diff = Math.round((date.getTime() - lastDate.getTime()) / 86400000);
-        if (diff === 1) current++;
-        else current = 1;
+        if (diff === 1) current++; else current = 1;
       }
-      max = Math.max(max, current);
-      lastDate = date;
+      max = Math.max(max, current); lastDate = date;
     }
     return max;
   };
 
   const longestStreak = calculateLongestStreak(user.activityCalendar);
 
-  // Get current week activity (Mon-Sun)
   const getWeeklyActivity = () => {
-    const days = ['D','S','C','P','J','S','Y'];
-    const today = new Date();
-    const day = today.getDay(); // 0 is Sun, 1 is Mon
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-    const monday = new Date(today.setDate(diff));
-    
+    const days = ['D','S','C','P','J','S','Y']
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayStr = getUTCDateString(today);
+    const currentDay = today.getDay();
+    const diff = currentDay === 0 ? -6 : 1 - currentDay;
+    const monday = new Date(today); monday.setDate(today.getDate() + diff); monday.setHours(0,0,0,0);
+    const createdDate = user.createdAt ? new Date(user.createdAt) : new Date(); createdDate.setHours(0,0,0,0);
+
     return Array.from({length: 7}, (_, i) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const d = new Date(monday); d.setDate(monday.getDate() + i); d.setHours(0,0,0,0);
+      const dateStr = getUTCDateString(d);
+      const isPlayed = user.activityCalendar.includes(dateStr);
+      const isPast = d < today;
+      const isSinceJoined = d >= createdDate;
+      const prevD = new Date(d); prevD.setDate(d.getDate() - 1);
+      const isPrevPlayed = user.activityCalendar.includes(getUTCDateString(prevD));
+      const nextD = new Date(d); nextD.setDate(d.getDate() + 1);
+      const isNextPlayed = user.activityCalendar.includes(getUTCDateString(nextD));
       return {
         label: days[i],
-        active: user.activityCalendar.includes(dateStr),
-        isToday: dateStr === new Date().toISOString().split('T')[0]
+        status: isPlayed ? 'played' : (isPast && isSinceJoined ? 'missed' : 'neutral'),
+        isStreak: isPlayed && (isPrevPlayed || isNextPlayed),
+        isToday: dateStr === todayStr
       };
     });
   };
@@ -84,47 +122,53 @@ export default function ProfilePage() {
   return (
     <AppShell>
       <TgSafeArea>
-        <div className="relative flex h-full flex-col overflow-hidden bg-[#050505]">
-          {/* Background Glows */}
-          <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/5 blur-[120px] rounded-full" />
-
-          <div className="z-20 flex items-center gap-4 px-6 py-4 bg-neutral-950/40 backdrop-blur-xl border-b border-white/5">
+        <div className="relative flex h-full flex-col overflow-hidden bg-black selection:bg-orange-500/30">
+          <div className="z-20 flex items-center gap-4 px-6 py-4 bg-black border-b border-white/5">
             <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl bg-white/5 hover:bg-white/10" onClick={() => router.push('/lobby')}>
-              <ChevronLeft className="h-6 w-6" />
+              <ChevronLeft className="h-6 w-6 text-neutral-400" />
             </Button>
             <h1 className="flex-1 text-lg font-black tracking-widest uppercase text-neutral-400">Profil</h1>
           </div>
 
-          <div className="z-10 flex-1 flex flex-col space-y-3 overflow-hidden pt-4 pb-8 px-6">
+          <div className="z-10 flex-1 flex flex-col space-y-4 overflow-hidden pt-4 pb-8 px-6">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              className="px-6 py-6 rounded-[2rem] border border-white/5 bg-white/[0.02] backdrop-blur-2xl shadow-2xl relative overflow-hidden"
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              className="px-6 py-8 rounded-[2.5rem] bg-[#0A0A0A] border border-white/5 shadow-2xl relative overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-orange-500 fill-orange-500" />
-                  <span className="text-sm font-black text-white tracking-widest uppercase font-sans">Streak Days Count</span>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                    <Flame className="h-6 w-6 text-orange-500 fill-orange-500" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-neutral-500 tracking-[0.2em] uppercase">Current Streak</span>
+                    <span className="text-xl font-black text-white leading-none mt-1 uppercase tracking-tight">{user.currentStreak} Days</span>
+                  </div>
                 </div>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <button className="text-sm font-bold text-neutral-500 hover:text-white transition-colors flex items-center gap-1.5 font-sans px-2 py-1 hover:bg-white/5 rounded-lg">
-                      View Details <ChevronRight className="h-4 w-4" />
+                    <button className="h-10 w-10 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all border border-white/5">
+                      <ChevronRight className="h-5 w-5 text-neutral-500" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent aria-describedby={undefined} className="bg-neutral-950 border-neutral-800 text-white max-w-[480px] rounded-[2rem] p-0 overflow-hidden shadow-2xl">
-                    <DialogHeader className="pt-10 px-10">
-                      <DialogTitle className="text-center font-black uppercase tracking-[0.3em] text-sm text-neutral-500 font-sans">Activity Calendar</DialogTitle>
+                  <DialogContent className="bg-black border-white/5 text-white max-w-[400px] rounded-[3rem] p-0 overflow-hidden shadow-2xl">
+                    <DialogTitle className="sr-only">Activity History</DialogTitle>
+                    <DialogHeader className="sr-only">
+                      <DialogDescription>
+                        View your daily gameplay activity and streak history.
+                      </DialogDescription>
                     </DialogHeader>
-                    <div className="p-8 flex justify-center pb-12">
+                    <div className="px-6 py-12 flex flex-col items-center bg-[#070707]">
                       <Calendar
-                        mode="multiple"
-                        selected={user.activityCalendar.map(d => new Date(d))}
-                        className="rounded-3xl border border-white/5 bg-white/[0.03] p-6 scale-110 origin-center w-full max-w-sm"
-                        classNames={{
-                          day: "h-10 w-10 flex items-center justify-center p-1",
-                          selected: "bg-primary text-primary-foreground rounded-full"
+                        weekStartsOn={1}
+                        className="p-0"
+                        modifiers={{
+                          streak_start: streakDates.start,
+                          streak_mid: streakDates.mid,
+                          streak_end: streakDates.end,
+                          streak_solo: streakDates.solo,
+                          missed: streakDates.missed
                         }}
                       />
                     </div>
@@ -139,17 +183,34 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center mb-8 px-1">
+              <div className="flex justify-between items-center gap-3 mb-8 px-1">
                 {weeklyActivity.map((day, i) => (
-                  <div key={i} className="flex flex-col items-center gap-2">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-all ${
-                      day.active 
-                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
-                        : 'bg-neutral-900 text-neutral-700'
-                    }`}>
-                      {day.active ? <Check className="h-4 w-4 stroke-[3]" /> : <div className="h-1.5 w-1.5 rounded-full bg-current" />}
+                  <div key={i} className="flex flex-col items-center gap-2.5">
+                    <div className={cn(
+                      "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-500 border relative",
+                      day.status === 'played' && "bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-500/30 scale-105",
+                      day.status === 'missed' && "bg-red-500/5 border-red-500/20 text-red-500",
+                      day.status === 'neutral' && "bg-neutral-900/50 border-white/5 text-neutral-700"
+                    )}>
+                      {day.status === 'played' ? (
+                         day.isStreak ? <Flame className="h-4.5 w-4.5 fill-white" /> : <Check className="h-4 w-4 stroke-[3.5]" />
+                      ) : day.status === 'missed' ? (
+                        <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                      ) : (
+                        <div className="h-1 w-1 rounded-full bg-current" />
+                      )}
+                      
+                      {day.isToday && day.status !== 'played' && (
+                        <div className="absolute inset-0 rounded-full border border-orange-500/30 animate-ping opacity-20" />
+                      )}
                     </div>
-                    <span className={`text-[10px] font-black ${day.active ? 'text-emerald-500' : 'text-neutral-700'}`}>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase tracking-widest",
+                      day.status === 'played' && "text-orange-500",
+                      day.status === 'missed' && "text-red-500/60",
+                      day.status === 'neutral' && "text-neutral-700",
+                      day.isToday && "text-orange-500/90 font-black"
+                    )}>
                       {day.label}
                     </span>
                   </div>

@@ -131,11 +131,11 @@ export default function BrainRingPage() {
 
   if (isSyncing) {
     return (
-      <AppShell className="items-center justify-center">
+      <AppShell className="items-center justify-center bg-black">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-4 p-8 rounded-3xl bg-card/60 backdrop-blur border border-border/30 shadow-2xl"
+          className="flex flex-col items-center gap-6 p-8 rounded-3xl bg-white/[0.02] backdrop-blur-xl border border-white/[0.05]"
         >
           <div className="relative">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -143,10 +143,10 @@ export default function BrainRingPage() {
             </div>
             <div className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping" />
           </div>
-          <p className="text-base font-bold text-foreground">O'yinga qayta ulanmoqda...</p>
-          <p className="text-xs text-muted-foreground text-center max-w-[200px]">
-            Server holati tiklanmoqda. Bir lahza kuting.
-          </p>
+          <div className="text-center">
+            <p className="text-base font-semibold text-white/90 mb-1">Reconnecting...</p>
+            <p className="text-xs text-white/40">Syncing game state</p>
+          </div>
         </motion.div>
       </AppShell>
     )
@@ -154,10 +154,10 @@ export default function BrainRingPage() {
 
   if (!currentQuestion) {
     return (
-      <AppShell className="items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+      <AppShell className="items-center justify-center bg-black">
+        <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <div className="text-muted-foreground font-medium animate-pulse">Server kutilmoqda...</div>
+          <div className="text-white/60 font-medium animate-pulse text-sm">Loading...</div>
         </div>
       </AppShell>
     )
@@ -166,25 +166,41 @@ export default function BrainRingPage() {
   return (
     <AppShell>
       <TgSafeArea>
-        <div className="flex flex-col h-full bg-[#050505] relative overflow-hidden pt-[72px]">
+        <div className="flex flex-col h-full bg-black relative overflow-hidden pt-[72px]">
           <PoolExhaustedModal />
-          <div className="absolute inset-0 pointer-events-none transition-all duration-1000">
-            <div className={cn(
-              "absolute top-[-20%] right-[-10%] w-[80%] h-[60%] blur-[120px] rounded-full transition-all duration-1000",
-              phase === 'reading' && "bg-amber-500/10",
-              phase === 'buzzing' && "bg-primary/20",
-              phase === 'answering' && "bg-red-500/20",
-              phase === 'reveal' && "bg-blue-500/10",
-              (!phase || phase === 'waiting') && "bg-white/5"
-            )} />
-            <div className={cn(
-              "absolute bottom-[-10%] left-[-20%] w-[100%] h-[50%] blur-[120px] rounded-full transition-all duration-1000",
-              phase === 'reading' && "bg-amber-500/5",
-              phase === 'buzzing' && "bg-primary/10",
-              phase === 'answering' && "bg-red-500/10",
-              phase === 'reveal' && "bg-blue-500/5",
-              (!phase || phase === 'waiting') && "bg-white/2"
-            )} />
+          
+          {/* Ambient Glow Effects */}
+          <div className="absolute inset-0 pointer-events-none">
+            <motion.div 
+              className={cn(
+                "absolute top-0 right-0 w-[70%] h-[50%] blur-[120px] rounded-full transition-all duration-1000",
+                phase === 'reading' && "bg-amber-500/[0.08]",
+                phase === 'buzzing' && "bg-primary/[0.12]",
+                phase === 'answering' && "bg-red-500/[0.12]",
+                phase === 'reveal' && "bg-emerald-500/[0.08]",
+                (!phase || phase === 'waiting') && "bg-white/[0.02]"
+              )}
+              animate={{
+                x: [0, 20, 0],
+                y: [0, -20, 0],
+              }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div 
+              className={cn(
+                "absolute bottom-0 left-0 w-[60%] h-[40%] blur-[100px] rounded-full transition-all duration-1000",
+                phase === 'reading' && "bg-amber-500/[0.05]",
+                phase === 'buzzing' && "bg-primary/[0.08]",
+                phase === 'answering' && "bg-red-500/[0.08]",
+                phase === 'reveal' && "bg-emerald-500/[0.05]",
+                (!phase || phase === 'waiting') && "bg-white/[0.01]"
+              )}
+              animate={{
+                x: [0, -20, 0],
+                y: [0, 20, 0],
+              }}
+              transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            />
           </div>
 
           <ArenaHeader 
@@ -193,14 +209,14 @@ export default function BrainRingPage() {
             totalQuestions={totalQuestions}
           />
 
-          <div className="relative z-20 px-8 py-3 bg-black/40 backdrop-blur-md border-b border-white/5">
+          <div className="relative z-20 px-6 py-4 bg-black/20 backdrop-blur-xl border-b border-white/[0.02]">
             <ProgressTimer 
               timeRemaining={timeRemaining} 
               totalTime={totalTime} 
             />
           </div>
 
-          <div className="flex-1 flex flex-col pt-8 relative z-10 w-full max-w-2xl mx-auto overflow-hidden">
+          <div className="flex-1 flex flex-col pt-6 relative z-10 w-full max-w-2xl mx-auto overflow-hidden">
             <div className="flex-1 flex flex-col min-h-0 px-4 md:px-8 pb-4 overflow-hidden">
               <QuestionDisplay
                 question={currentQuestion}
@@ -210,7 +226,7 @@ export default function BrainRingPage() {
               />
             </div>
 
-            <div className="h-[40%] min-h-[320px] relative w-full bg-neutral-950/60 backdrop-blur-xl border-t border-white/5 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-30">
+            <div className="h-[40%] min-h-[320px] relative w-full bg-black/40 backdrop-blur-2xl border-t border-white/[0.03] z-30">
               <AnimatePresence mode="wait">
                 {(phase === 'reading' || phase === 'buzzing') && (
                   <motion.div
@@ -218,35 +234,34 @@ export default function BrainRingPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 50 }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-auto"
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute inset-0 flex items-center justify-center"
                   >
-                    <div className="flex flex-col items-center gap-8">
-                      <div className="flex flex-col items-center gap-3">
+                    <div className="flex flex-col items-center gap-10">
+                      <div className="flex flex-col items-center gap-4">
                         {phase === 'reading' ? (
-                          <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 animate-pulse">
-                            <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />
-                            <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] font-sans">
-                              Reading Question
+                          <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-amber-500/[0.06] border border-amber-500/10">
+                            <Loader2 className="h-3.5 w-3.5 text-amber-500/70 animate-spin" />
+                            <span className="text-[9px] font-medium text-amber-500/70 uppercase tracking-[0.3em]">
+                              Reading
                             </span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-4">
-                            <div className="px-6 py-2 rounded-full bg-primary/10 border border-primary/20">
-                              <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em] font-sans">
+                          <div className="flex items-center gap-5">
+                            <div className="px-5 py-2 rounded-full bg-primary/[0.08] border border-primary/10">
+                              <span className="text-[9px] font-medium text-primary/80 uppercase tracking-[0.3em]">
                                 Buzz Now
                               </span>
                             </div>
-                            <div className="h-4 w-[1.5px] bg-white/10" />
+                            <div className="h-4 w-[1px] bg-white/[0.06]" />
                             <div className="flex items-center gap-2">
-                               <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest font-sans">Ends:</span>
-                               <span className="text-sm font-black text-white font-sans">{chancesLeft}</span>
+                               <span className="text-[9px] font-medium text-white/30 uppercase tracking-wider">Chances:</span>
+                               <span className="text-sm font-bold text-white/90 tabular-nums">{chancesLeft}</span>
                             </div>
                           </div>
                         )}
                       </div>
-                      <div className="relative">
-                        <BuzzerButton disabled={phase === 'reading' || chancesLeft <= 0} />
-                      </div>
+                      <BuzzerButton disabled={phase === 'reading' || chancesLeft <= 0} />
                     </div>
                   </motion.div>
                 )}
@@ -257,14 +272,15 @@ export default function BrainRingPage() {
                     initial={{ opacity: 0, y: 50 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 50 }}
-                    className="absolute inset-0 z-20 flex flex-col justify-end pointer-events-auto"
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute inset-0 z-20 flex flex-col justify-end"
                   >
                     {isMyBuzzer ? (
-                      <div className="w-full h-full flex flex-col p-8 pt-12">
-                        <div className="space-y-1 mb-8">
-                          <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 w-fit">
-                            <div className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-                            <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.4em] font-sans">
+                      <div className="w-full h-full flex flex-col p-6 pt-10">
+                        <div className="mb-6">
+                          <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-red-500/[0.08] border border-red-500/10 w-fit">
+                            <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-[9px] font-medium text-red-500/80 uppercase tracking-[0.3em]">
                               Your Turn
                             </span>
                           </div>
@@ -278,17 +294,17 @@ export default function BrainRingPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-neutral-950/80 backdrop-blur-2xl z-30">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/60 backdrop-blur-2xl">
                         <div className="relative mb-8">
-                          <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center shadow-inner group">
-                             <div className="absolute inset-[-10px] rounded-full border border-white/5 animate-spin-slow" />
-                             <Loader2 className="w-10 h-10 text-neutral-500 animate-spin" />
+                          <div className="w-20 h-20 rounded-full bg-white/[0.03] flex items-center justify-center border border-white/[0.05]">
+                             <div className="absolute inset-[-8px] rounded-full border border-white/[0.03] animate-spin-slow" />
+                             <Loader2 className="w-8 h-8 text-white/40 animate-spin" />
                           </div>
                         </div>
-                        <h2 className="text-sm font-black text-neutral-400 uppercase tracking-[0.4em] font-sans mb-2">
-                           Player Thinking
+                        <h2 className="text-xs font-medium text-white/40 uppercase tracking-[0.2em] mb-2">
+                           Thinking
                         </h2>
-                        <p className="text-2xl font-black text-white uppercase tracking-tight text-center">
+                        <p className="text-xl font-bold text-white/90">
                           {buzzerUsername || 'Opponent'}
                         </p>
                       </div>
@@ -307,23 +323,23 @@ export default function BrainRingPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/80 backdrop-blur-2xl pointer-events-auto"
+                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/80 backdrop-blur-2xl pointer-events-none"
                 >
-                  <div className="w-full max-w-lg">
+                  <div className="w-full max-w-lg pointer-events-auto">
                     {lastAnswerResult.isCorrect === false && chancesLeft > 0 ? (
                       <div className="flex flex-col items-center justify-center text-center">
-                        <div className="w-24 h-24 bg-red-500/10 rounded-3xl flex items-center justify-center mb-8 border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.1)]">
-                          <X className="h-12 w-12 text-red-500" />
+                        <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mb-8 border border-red-500/20">
+                          <X className="h-10 w-10 text-red-500" />
                         </div>
-                        <h3 className="text-2xl font-black text-red-500 uppercase tracking-tighter mb-2">Incorrect</h3>
-                        <div className="bg-white/[0.02] backdrop-blur-xl border border-white/5 rounded-2xl p-6 w-full mt-4">
-                          <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Answer given</p>
-                          <span className="text-xl font-black text-white uppercase tracking-tight">
+                        <h3 className="text-2xl font-bold text-red-500 mb-4">Incorrect</h3>
+                        <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.05] rounded-2xl p-6 w-full mt-4">
+                          <p className="text-[9px] font-medium text-white/40 uppercase tracking-wider mb-2">Given Answer</p>
+                          <span className="text-lg font-semibold text-white/90">
                             "{lastAnswerResult.givenAnswer || 'None'}"
                           </span>
                         </div>
-                        <p className="text-[10px] font-black text-primary mt-10 uppercase tracking-[0.3em] font-sans animate-pulse">
-                          Switching Players...
+                        <p className="text-[9px] font-medium text-primary/60 mt-10 uppercase tracking-[0.25em] animate-pulse">
+                          Next Player...
                         </p>
                       </div>
                     ) : (
@@ -331,14 +347,18 @@ export default function BrainRingPage() {
                         correctAnswer={lastAnswerResult.correctAnswer || ''}
                         results={[{
                           playerId: lastAnswerResult.userId,
-                          playerName: lastAnswerResult.userId === userId ? username : (buzzerUsername || 'Raqib'),
+                          playerName: lastAnswerResult.userId === userId ? username : (buzzerUsername || 'Opponent'),
                           answer: lastAnswerResult.givenAnswer || '',
                           isCorrect: lastAnswerResult.isCorrect,
                           pointsDelta: lastAnswerResult.isCorrect ? 1 : 0,
                           newScore: 0,
                           isCurrentUser: lastAnswerResult.userId === userId,
                         }]}
-                        onContinue={() => {}}
+                        onContinue={() => {
+                          if (useGameStore.getState().phase === 'results' || useGameStore.getState().phase === 'reveal') {
+                             useGameStore.setState({ phase: 'reading' }) // Fallback safeguard
+                          }
+                        }}
                       />
                     )}
                   </div>
@@ -351,25 +371,25 @@ export default function BrainRingPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/80 backdrop-blur-2xl pointer-events-auto"
+                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/80 backdrop-blur-2xl pointer-events-none"
                 >
-                  <div className="relative w-full max-w-md group px-4">
-                    <div className="absolute inset-0 bg-primary/10 blur-[100px] rounded-full animate-pulse" />
-                    <div className="relative bg-white/[0.02] backdrop-blur-3xl border border-white/5 shadow-2xl rounded-[3.5rem] p-10 md:p-14 transform transition-all hover:scale-[1.02] duration-700 text-center">
+                  <div className="relative w-full max-w-md px-4 pointer-events-auto">
+                    <div className="absolute inset-0 bg-primary/5 blur-[80px] rounded-full" />
+                    <div className="relative bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-[3rem] p-10 md:p-12 text-center">
                       <div className="flex items-center justify-center gap-3 mb-8">
-                         <div className="h-px w-8 bg-primary/30" />
-                         <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.5em] font-sans">
-                           To'g'ri Javob
+                         <div className="h-[1px] w-8 bg-primary/20" />
+                         <h2 className="text-[9px] font-medium text-primary/70 uppercase tracking-[0.3em]">
+                           Correct Answer
                          </h2>
-                         <div className="h-px w-8 bg-primary/30" />
+                         <div className="h-[1px] w-8 bg-primary/20" />
                       </div>
-                      <p className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-10 drop-shadow-2xl">
+                      <p className="text-4xl md:text-5xl font-bold text-white mb-10">
                         {lastAnswerResult?.correctAnswer}
                       </p>
                       {questionExplanation && (
                         <div className="relative mt-2">
-                          <div className="absolute inset-0 bg-primary/5 blur-xl rounded-3xl" />
-                          <p className="relative text-[11px] text-neutral-400 font-bold leading-relaxed bg-white/[0.03] p-5 md:p-7 rounded-[2rem] border border-white/5 pointer-events-auto">
+                          <div className="absolute inset-0 bg-primary/3 blur-xl rounded-3xl" />
+                          <p className="relative text-xs text-white/50 font-medium leading-relaxed bg-white/[0.02] p-6 rounded-2xl border border-white/[0.05]">
                             {questionExplanation}
                           </p>
                         </div>

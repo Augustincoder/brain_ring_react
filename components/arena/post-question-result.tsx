@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { CheckCircle2, XCircle, Bot, Clock, User } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -36,32 +36,30 @@ export function PostQuestionResult({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className={cn('flex flex-col gap-6 w-full max-w-md mx-auto', className)}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className={cn('flex flex-col gap-8 w-full max-w-md mx-auto px-4', className)}
     >
-      {/* Premium Answer Card */}
+      {/* Answer Card */}
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="relative group overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] p-8 text-center backdrop-blur-3xl shadow-2xl"
+        transition={{ delay: 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="relative overflow-hidden rounded-3xl border border-white/[0.05] bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-8 text-center backdrop-blur-xl"
       >
-        {/* Subtle Emerald Glow Backdrop */}
-        <div className="absolute inset-0 bg-emerald-500/5 blur-3xl opacity-50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent" />
         
-        <div className="relative z-10">
-          <div className="mb-4 flex items-center justify-center gap-2.5">
-            <div className="h-5 w-5 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
-              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/70 font-sans">
-              To'g'ri Javob
+        <div className="relative">
+          <div className="mb-5 flex items-center justify-center gap-2">
+            <div className="h-1 w-6 bg-emerald-500/20 rounded-full" />
+            <span className="text-[9px] font-medium uppercase tracking-[0.25em] text-emerald-500/60">
+              Correct Answer
             </span>
+            <div className="h-1 w-6 bg-emerald-500/20 rounded-full" />
           </div>
-          <p className="text-3xl font-black text-white uppercase tracking-tighter mix-blend-difference group-hover:scale-105 transition-transform duration-500">
+          <p className="text-3xl font-bold text-white">
             {correctAnswer}
           </p>
         </div>
@@ -69,12 +67,12 @@ export function PostQuestionResult({
 
       {/* Results List */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-4 px-2 mb-1">
-          <div className="h-px flex-1 bg-white/[0.03]" />
-          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-neutral-600 font-sans">
-            Natijalar
+        <div className="flex items-center gap-3 px-2 mb-1">
+          <div className="h-[1px] flex-1 bg-white/[0.05]" />
+          <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/30">
+            Results
           </span>
-          <div className="h-px flex-1 bg-white/[0.03]" />
+          <div className="h-[1px] flex-1 bg-white/[0.05]" />
         </div>
 
         {results.map((result, index) => (
@@ -82,30 +80,30 @@ export function PostQuestionResult({
             key={result.playerId}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 + index * 0.1 }}
+            transition={{ delay: 0.3 + index * 0.08, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'flex items-center gap-4 rounded-[1.5rem] border p-4 transition-all duration-300',
+              'flex items-center gap-4 rounded-2xl border p-4 transition-all duration-300',
               result.isCurrentUser
-                ? 'border-primary/20 bg-primary/[0.03] shadow-[0_0_30px_rgba(var(--primary),0.05)]'
-                : 'border-white/5 bg-white/[0.01]'
+                ? 'border-primary/20 bg-primary/[0.04]'
+                : 'border-white/[0.05] bg-white/[0.02]'
             )}
           >
             <div
               className={cn(
-                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border',
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border',
                 result.isCorrect
                   ? 'bg-emerald-500/10 border-emerald-500/20'
                   : result.answer
-                    ? 'bg-rose-500/10 border-rose-500/20'
-                    : 'bg-white/5 border-white/5'
+                    ? 'bg-red-500/10 border-red-500/20'
+                    : 'bg-white/[0.03] border-white/[0.05]'
               )}
             >
               {result.isCorrect ? (
                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
               ) : result.answer ? (
-                <XCircle className="h-5 w-5 text-rose-500" />
+                <XCircle className="h-5 w-5 text-red-500" />
               ) : (
-                <Clock className="h-5 w-5 text-neutral-600" />
+                <Clock className="h-5 w-5 text-white/30" />
               )}
             </div>
 
@@ -113,58 +111,54 @@ export function PostQuestionResult({
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    'truncate text-sm font-bold tracking-tight font-sans',
-                    result.isCurrentUser ? 'text-primary' : 'text-neutral-200'
+                    'truncate text-sm font-semibold',
+                    result.isCurrentUser ? 'text-primary' : 'text-white/90'
                   )}
                 >
                   {result.playerName}
                 </span>
                 {result.isCurrentUser && (
-                  <span className="text-[9px] font-black uppercase tracking-widest text-primary/40">(siz)</span>
+                  <span className="text-[9px] font-medium uppercase tracking-wider text-primary/40">(you)</span>
                 )}
               </div>
-              <span className="mt-0.5 block truncate text-[10px] font-medium text-neutral-500 font-sans tracking-wide">
+              <span className="mt-0.5 block truncate text-xs font-medium text-white/40">
                 {result.answer
                    ? `"${result.answer}"`
-                   : 'Javob bermadi'}
+                   : 'No answer'}
               </span>
             </div>
 
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
-              className="shrink-0 flex items-center gap-1.5"
-            >
-              {result.pointsDelta !== 0 && (
-                <div
-                  className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-black font-sans',
-                    result.pointsDelta > 0
-                      ? 'bg-emerald-500/10 text-emerald-500'
-                      : 'bg-rose-500/10 text-rose-500'
-                  )}
-                >
-                  {result.pointsDelta > 0 ? `+${result.pointsDelta}` : result.pointsDelta}
-                </div>
-              )}
-            </motion.div>
+            {result.pointsDelta !== 0 && (
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.5 + index * 0.1, type: "spring", stiffness: 200 }}
+                className={cn(
+                  'shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold tabular-nums',
+                  result.pointsDelta > 0
+                    ? 'bg-emerald-500/10 text-emerald-500'
+                    : 'bg-red-500/10 text-red-500'
+                )}
+              >
+                {result.pointsDelta > 0 ? `+${result.pointsDelta}` : result.pointsDelta}
+              </motion.div>
+            )}
           </motion.div>
         ))}
       </div>
 
-      {/* Post-result Action */}
+      {/* Continue Button */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.8, duration: 0.4 }}
         className="mt-4"
       >
         <Button
           onClick={onContinue}
-          className="h-16 w-full rounded-[1.5rem] bg-white text-neutral-950 hover:bg-neutral-200 text-sm font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl"
+          className="h-14 w-full rounded-2xl bg-gradient-to-b from-white to-white/95 text-neutral-950 hover:from-white/95 hover:to-white/90 text-sm font-bold uppercase tracking-[0.1em] transition-all shadow-[0_8px_30px_-8px_rgba(255,255,255,0.3)]"
         >
-          Davom etish
+          Continue
         </Button>
       </motion.div>
     </motion.div>

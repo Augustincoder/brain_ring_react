@@ -21,28 +21,46 @@ export function ProgressTimer({
   const isCritical = validTime <= 3
 
   return (
-    <div className={cn("relative w-full flex flex-col gap-2", className)}>
+    <div className={cn("relative w-full flex flex-col gap-3", className)}>
       <div className="flex justify-between items-baseline px-1">
-        <span className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.4em] font-sans">
-          Time Remaining
+        <span className="text-[9px] font-medium text-white/30 uppercase tracking-[0.2em]">
+          Time
         </span>
-        <span className={cn(
-          "text-sm font-black font-sans leading-none",
-          isCritical ? "text-red-500 animate-pulse" : "text-white"
-        )}>
+        <motion.span 
+          animate={{ 
+            scale: isCritical ? [1, 1.08, 1] : 1,
+          }}
+          transition={{ 
+            duration: 0.4,
+            repeat: isCritical ? Infinity : 0,
+          }}
+          className={cn(
+            "text-sm font-bold tabular-nums transition-colors duration-300",
+            isCritical ? "text-red-400" : "text-white/90"
+          )}
+        >
           {validTime}s
-        </span>
+        </motion.span>
       </div>
-      <div className="relative h-1 w-full bg-white/5 rounded-full overflow-hidden">
+      <div className="relative h-1.5 w-full bg-white/[0.03] rounded-full overflow-hidden">
         <motion.div
           className={cn(
-            "h-full rounded-full transition-colors duration-500",
-            isCritical ? "bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]" : "bg-primary shadow-[0_0_15px_rgba(var(--primary),0.5)]"
+            "h-full rounded-full transition-all duration-500",
+            isCritical 
+              ? "bg-gradient-to-r from-red-500 to-red-400" 
+              : "bg-gradient-to-r from-primary to-primary/80"
           )}
           initial={{ width: '100%' }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.3, ease: "linear" }}
         />
+        {isCritical && (
+          <motion.div 
+            className="absolute inset-0 bg-red-500/20"
+            animate={{ opacity: [0.2, 0.6, 0.2] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+          />
+        )}
       </div>
     </div>
   )

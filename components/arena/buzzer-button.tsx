@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBuzzer } from '@/hooks/use-buzzer'
@@ -18,62 +18,65 @@ export function BuzzerButton({ className, disabled }: BuzzerButtonProps) {
 
   const handleBuzz = (e: React.MouseEvent | React.TouchEvent) => {
     if (isDisabled) return
+    e.preventDefault()
+    e.stopPropagation()
     pressBuzzer()
   }
 
   return (
-    <div className={cn("relative group/buzzer pointer-events-auto h-52 w-52 flex items-center justify-center", className)}>
-      {/* Dynamic Glow Aura */}
-      <AnimatePresence>
-        {!isDisabled && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1.2 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full animate-pulse"
-          />
-        )}
-      </AnimatePresence>
+    <div className={cn("relative flex items-center justify-center", className)}>
+      {!isDisabled && (
+        <motion.div
+          className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full"
+          animate={{ 
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.6, 0.3] 
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+      )}
 
       <motion.button
-        whileHover={!isDisabled ? { scale: 1.05 } : {}}
-        whileTap={!isDisabled ? { scale: 0.9, y: 10 } : {}}
+        whileHover={!isDisabled ? { scale: 1.03 } : {}}
+        whileTap={!isDisabled ? { scale: 0.92 } : {}}
         disabled={isDisabled}
         onClick={handleBuzz}
         className={cn(
-          "relative h-44 w-44 rounded-full transition-all duration-300 select-none outline-none",
-          "border-[8px] flex items-center justify-center overflow-hidden",
+          "relative h-40 w-40 rounded-full transition-all duration-300 select-none outline-none",
+          "flex items-center justify-center overflow-hidden",
+          "border-4",
           isDisabled 
-            ? "bg-neutral-900 border-neutral-800 cursor-not-allowed opacity-50 grayscale" 
-            : "bg-primary border-primary/40 shadow-[0_25px_50px_-12px_rgba(var(--primary),0.5)] cursor-pointer"
+            ? "bg-white/[0.02] border-white/[0.03] cursor-not-allowed opacity-40" 
+            : "bg-gradient-to-b from-primary to-primary/90 border-primary/30 cursor-pointer shadow-[0_20px_60px_-15px_rgba(var(--primary-rgb),0.4)]"
         )}
       >
-        {/* Inner shadow/depth effect */}
-        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-
-        <div className="flex flex-col items-center justify-center gap-1">
-          <Zap className={cn(
-            "h-14 w-14 transition-transform duration-300",
-            !isDisabled && "group-hover/buzzer:scale-110 group-hover/buzzer:rotate-12",
-            isDisabled ? "text-neutral-700" : "text-neutral-950"
-          )} />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+        
+        <div className="flex flex-col items-center justify-center gap-2">
+          <motion.div
+            animate={!isDisabled ? { 
+              rotate: [0, -5, 5, -5, 0],
+              scale: [1, 1.05, 1] 
+            } : {}}
+            transition={{ 
+              duration: 0.5,
+              repeat: !isDisabled ? Infinity : 0,
+              repeatDelay: 2 
+            }}
+          >
+            <Zap className={cn(
+              "h-12 w-12",
+              isDisabled ? "text-white/10" : "text-neutral-950"
+            )} fill={isDisabled ? "none" : "currentColor"} />
+          </motion.div>
           <span className={cn(
-            "text-[10px] font-black uppercase tracking-[0.3em] font-sans",
-            isDisabled ? "text-neutral-800" : "text-neutral-950/70"
+            "text-[10px] font-bold uppercase tracking-[0.25em]",
+            isDisabled ? "text-white/10" : "text-neutral-950/70"
           )}>
             BUZZ
           </span>
         </div>
-
-        {/* Glossy overlay */}
-        <div className="absolute inset-0 ring-inset ring-1 ring-white/10 rounded-full" />
       </motion.button>
-      
-      {/* Bottom shadow for floating effect */}
-      {!isDisabled && (
-        <div className="absolute -bottom-8 w-32 h-4 bg-primary/20 blur-xl rounded-full" />
-      )}
     </div>
   )
 }
