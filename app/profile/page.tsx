@@ -31,7 +31,7 @@ export default function ProfilePage() {
 
   const streakDates = useMemo(() => {
     const todayStr = getUTCDateString(new Date())
-    const activity = [...(user?.activityCalendar || []), "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", todayStr]
+    const activity = [...(user?.activityCalendar || [])]
     const start: Date[] = [], mid: Date[] = [], end: Date[] = [], solo: Date[] = [], missed: Date[] = []
     
     const rangeStart = new Date(2026, 2, 1)
@@ -152,14 +152,14 @@ export default function ProfilePage() {
                       <ChevronRight className="h-5 w-5 text-neutral-500" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="bg-black border-white/5 text-white max-w-[400px] rounded-[3rem] p-0 overflow-hidden shadow-2xl">
+                  <DialogContent className="bg-black border-white/5 text-white w-[calc(100%-2rem)] max-w-md rounded-[3rem] p-0 overflow-hidden shadow-2xl">
                     <DialogTitle className="sr-only">Activity History</DialogTitle>
                     <DialogHeader className="sr-only">
                       <DialogDescription>
                         View your daily gameplay activity and streak history.
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="px-6 py-12 flex flex-col items-center bg-[#070707]">
+                    <div className="px-6 py-6 flex flex-col items-center bg-[#070707]">
                       <Calendar
                         weekStartsOn={1}
                         className="p-0"

@@ -5,7 +5,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from 'lucide-react'
-import { DayButton, DayPicker, useDayPicker, CaptionProps } from 'react-day-picker'
+// DayProps qabul qilinadi
+import { DayPicker, useDayPicker, CaptionProps, DayProps } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 
 function Calendar({
@@ -25,7 +26,7 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
-        formatWeekdayName: (date) => 
+        formatWeekdayName: (date) =>
           date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3).toUpperCase(),
       }}
       classNames={{
@@ -36,14 +37,9 @@ function Calendar({
         caption_label: "hidden",
         nav: "hidden",
         table: 'w-full border-collapse',
-        weekdays: 'grid grid-cols-7 w-full mb-10',
-        weekday: 'text-neutral-700 font-black text-[9px] uppercase tracking-[0.2em] text-center select-none',
-        week: 'grid grid-cols-7 w-full mt-2 justify-items-center',
-        day: 'relative w-11 h-11 p-0 text-center group/day aspect-square select-none flex items-center justify-center',
-        today: 'relative z-10',
-        outside: 'opacity-10 pointer-events-none',
-        disabled: 'text-muted-foreground opacity-50',
-        hidden: 'invisible',
+        weekdays: 'grid grid-cols-7 w-full mb-8',
+        weekday: 'text-neutral-400 font-bold text-[11px] uppercase tracking-[0.2em] text-center select-none',
+        week: 'grid grid-cols-7 w-full mt-2',
         ...classNames,
       }}
       components={{
@@ -51,7 +47,8 @@ function Calendar({
           <div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />
         ),
         MonthCaption: CustomMonthCaption,
-        DayButton: CalendarDayButton,
+        // ASOSIY O'ZGARISH: DayButton emas, Day butunlay qayta yoziladi
+        Day: CustomDay,
         ...props.components,
       }}
       {...props}
@@ -73,11 +70,11 @@ function CustomMonthCaption({ calendarMonth }: CaptionProps) {
       >
         <ChevronLeftIcon className="size-5 text-white" />
       </button>
-      
+
       <span className="absolute inset-0 flex items-center justify-center text-[0.95rem] font-black uppercase tracking-[0.4em] text-white select-none pointer-events-none">
         {monthName}
       </span>
-      
+
       <button
         disabled={!nextMonth}
         onClick={() => nextMonth && goToMonth(nextMonth)}
@@ -89,42 +86,41 @@ function CustomMonthCaption({ calendarMonth }: CaptionProps) {
     </div>
   )
 }
- 
-function CalendarDayButton(props: React.ComponentProps<typeof DayButton>) {
-  const { className, day, modifiers, ...rest } = props
- 
-  // Robust modifier lookup supporting both dot and bracket notation
+
+// BIZ YARATGAN YANGI KOMPONENT: Asosiy <td> ni o'zimiz chizamiz
+function CustomDay(props: DayProps) {
+  const { day, modifiers } = props
+
   const m = modifiers || {}
-  const isStart = !!(m.streak_start || m['streak_start'])
-  const isMid = !!(m.streak_mid || m['streak_mid'])
-  const isEnd = !!(m.streak_end || m['streak_end'])
-  const isSolo = !!(m.streak_solo || m['streak_solo'])
+  const isStart = !!m.streak_start
+  const isMid = !!m.streak_mid
+  const isEnd = !!m.streak_end
+  const isSolo = !!m.streak_solo
   const isPlayed = isStart || isMid || isEnd || isSolo
   const isGroup = isStart || isMid || isEnd
- 
+  const isOutside = !!m.outside
+  const isToday = !!m.today
+
   return (
-    <DayButton
-      day={day}
-      modifiers={modifiers}
-      data-streak-start={isStart}
-      data-streak-mid={isMid}
-      data-streak-end={isEnd}
-      data-streak-solo={isSolo}
-      data-is-played={isPlayed}
+    <td
+      role="gridcell"
+      aria-label={day.date.toDateString()}
       className={cn(
-        'relative flex aspect-square size-auto w-full min-w-(--cell-size) flex-col items-center justify-center font-normal transition-all duration-300 rounded-xl',
-        
-        // CRITICAL FIX: Add content-[''] to pseudo-elements to ensure they are rendered
-        "before:content-[''] before:absolute before:inset-y-[21%] before:z-0 before:transition-all before:duration-300",
-        
-        "data-[streak-start=true]:before:left-1/2 data-[streak-start=true]:before:right-0 data-[streak-start=true]:before:bg-orange-500/20 data-[streak-start=true]:before:rounded-l-full",
-        "data-[streak-mid=true]:before:left-0 data-[streak-mid=true]:before:right-0 data-[streak-mid=true]:before:bg-orange-500/20",
-        "data-[streak-end=true]:before:left-0 data-[streak-end=true]:before:right-1/2 data-[streak-end=true]:before:bg-orange-500/20 data-[streak-end=true]:before:rounded-r-full",
-        
-        'group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-1 group-data-[focused=true]/day:ring-orange-500/40',
-        className,
+        // Standart td stillari
+        'relative w-full h-11 p-0 text-center group/day select-none flex items-center justify-center',
+
+        // Agar boshqa oyning kuni bo'lsa
+        isOutside && 'opacity-10 pointer-events-none',
+
+        // Agar bugungi kun bo'lsa, z-index ni ko'tarish
+        isToday && 'z-10',
+
+        // Olovli chiziqlar (bevosita td ga beramiz)
+        "before:content-[''] before:absolute before:inset-y-[30%] before:z-0 before:transition-all before:duration-300",
+        isStart && "before:left-1/2 before:right-0 before:bg-orange-500/20 before:rounded-l-full",
+        isMid && "before:left-0 before:right-0 before:bg-orange-500/20",
+        isEnd && "before:left-0 before:right-1/2 before:bg-orange-500/20 before:rounded-r-full"
       )}
-      {...rest}
     >
       <div className={cn(
         "z-10 flex items-center justify-center w-9 h-9 rounded-full transition-all duration-500 text-[11px] font-black",
@@ -149,7 +145,7 @@ function CalendarDayButton(props: React.ComponentProps<typeof DayButton>) {
           day.date.getDate()
         )}
       </div>
-    </DayButton>
+    </td>
   )
 }
 
