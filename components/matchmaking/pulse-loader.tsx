@@ -1,60 +1,31 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { UserSearch } from 'lucide-react'
 
-interface PulseLoaderProps {
-  className?: string
-}
-
-export function PulseLoader({ className }: PulseLoaderProps) {
+export function PulseLoader() {
   return (
-    <div className={cn('relative flex items-center justify-center', className)}>
-      {/* Concentric pulse circles */}
-      {[0, 1, 2].map((i) => (
+    <div className="relative flex items-center justify-center w-32 h-32">
+      {/* Orqa fon animatsiyalari (Puls) */}
+      {[...Array(3)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full border border-primary/30"
-          initial={{ width: 80, height: 80, opacity: 0.5 }}
-          animate={{
-            width: [80, 160, 200],
-            height: [80, 160, 200],
-            opacity: [0.5, 0.2, 0],
-          }}
+          className="absolute inset-0 rounded-full border-2 border-orange-500/30"
+          initial={{ opacity: 0.8, scale: 0.8 }}
+          animate={{ opacity: 0, scale: 2 }}
           transition={{
             duration: 2,
             repeat: Infinity,
             delay: i * 0.6,
-            ease: 'easeOut',
+            ease: "easeOut",
           }}
         />
       ))}
       
-      {/* Center circle */}
-      <motion.div
-        className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 backdrop-blur-sm border border-primary/20"
-        animate={{
-          scale: [1, 1.05, 1],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-      >
-        <motion.div
-          className="h-12 w-12 rounded-full bg-primary/20"
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.5, 1, 0.5],
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-      </motion.div>
+      {/* Markaziy ikonka */}
+      <div className="relative z-10 flex items-center justify-center w-20 h-20 bg-[#0A0A0A] border border-white/10 rounded-full shadow-[0_0_30px_rgba(249,115,22,0.15)]">
+        <UserSearch className="w-8 h-8 text-orange-500 animate-pulse" />
+      </div>
     </div>
   )
 }

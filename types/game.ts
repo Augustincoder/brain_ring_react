@@ -67,8 +67,8 @@ export const BRAIN_RING_SUB_MODES: BrainRingSubModeConfig[] = [
   },
   {
     id: '1v1',
-    name: '1v1 Match',
-    nameUz: '1v1 o\'yin',
+    name: '1vs1 Match', 
+    nameUz: '1vs1 o\'yin',
     description: 'Face a random opponent',
     descriptionUz: 'Tasodifiy raqib bilan bellashing',
     icon: 'users',
