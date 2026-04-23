@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation' 
 import { motion, AnimatePresence } from 'framer-motion'
 import { AppShell } from '@/components/layout/app-shell'
@@ -14,7 +14,7 @@ import { useGameSocket } from '@/hooks/use-game-socket'
 import { PulseLoader } from '@/components/matchmaking/pulse-loader'
 import { cn } from '@/lib/utils'
 
-export default function MatchmakingPage() {
+function MatchmakingContent() {
   const router = useRouter()
   const searchParams = useSearchParams() 
   const user = useUserStore()
@@ -279,3 +279,15 @@ export default function MatchmakingPage() {
     </AppShell>
   )
 }
+
+export default function MatchmakingPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen w-screen bg-black flex items-center justify-center">
+        <PulseLoader />
+      </div>
+    }>
+      <MatchmakingContent />
+    </Suspense>
+  )
+}
